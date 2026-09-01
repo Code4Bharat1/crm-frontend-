@@ -42,8 +42,8 @@ export default function VisitsPage() {
       <div className="mt-4">
         <Section title="Site verification logic" description="How the system decides whether the employee actually reached the customer">
           <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <li>Check-in captures device GPS and compares it with the customer's registered site coordinates.</li>
-            <li>Distance beyond the configured radius is flagged as "Not verified" for manager review.</li>
+            <li>Check-in captures device GPS and compares it with the customer&apos;s registered site coordinates.</li>
+            <li>Distance beyond the configured radius is flagged as &quot;Not verified&quot; for manager review.</li>
             <li>Check-out duration is used for effort costing against projects and service cases.</li>
             <li>Every visit can be linked to a lead, project or service request.</li>
           </ul>

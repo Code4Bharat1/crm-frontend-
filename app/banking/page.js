@@ -32,7 +32,7 @@ export default function Page() {
       <div className="mt-4">
         <Section title="Controls on banking operations">
           <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <li>Sender name mismatch (e.g. "SHAKTI ENGG" vs registered name) is supported through alias mapping.</li>
+            <li>Sender name mismatch (e.g. &quot;SHAKTI ENGG&quot; vs registered name) is supported through alias mapping.</li>
             <li>Only Accounts Manager and Director roles can finalise a reconciliation.</li>
             <li>Every match, edit and confirmation is written to the audit log with user, time and IP.</li>
             <li>Credentials are encrypted; no uncertain match is ever auto-posted.</li>

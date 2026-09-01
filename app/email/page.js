@@ -20,7 +20,7 @@ export default function EmailPage() {
 
   // Load saved emails from MongoDB
   useEffect(() => {
-    fetch("http://localhost:5000/api/ai/emails")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/emails`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -47,7 +47,7 @@ export default function EmailPage() {
     setLoading(true);
     toast.info("Fetching latest email...");
     try {
-      const res = await fetch("http://localhost:5000/api/ai/fetch-email");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/fetch-email`);
       const data = await res.json();
       
       if (!res.ok) {
@@ -85,7 +85,7 @@ export default function EmailPage() {
     setEmails(prev => prev.map(e => e.id === id ? { ...e, read: true } : e));
     
     try {
-      const res = await fetch(`http://localhost:5000/api/ai/emails/${id}/read`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/emails/${id}/read`, {
         method: 'PUT'
       });
       if (res.ok) {
@@ -103,7 +103,7 @@ export default function EmailPage() {
     setExtractingId(email.id);
     toast.info("Extracting structured lead...");
     try {
-      const extractRes = await fetch("http://localhost:5000/api/ai/extract-lead-from-text", {
+      const extractRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/extract-lead-from-text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
@@ -130,7 +130,7 @@ export default function EmailPage() {
         notes: `Requirement: ${leadData.requirementSummary || "Generated from AI email parsing"}\n\nEmail Message: ${email.fullText || email.preview}`
       };
 
-      const res = await fetch("http://localhost:5000/api/sales/leads", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/sales/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -157,18 +157,18 @@ export default function EmailPage() {
     setEmails(prev => prev.map(e => e.id === emailObj.id ? { ...e, followedUp: true } : e));
     
     try {
-      const res = await fetch(`http://localhost:5000/api/ai/emails/${emailObj.id}/follow-up`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/emails/${emailObj.id}/follow-up`, {
         method: 'POST'
       });
       if (res.ok) {
         toast.success("Follow-up email sent successfully");
 
-        // Automatically create lead in Potential stage
+        // Automatically create lead in Hot stage
         const payload = {
           id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
           customerName: emailObj.customerName || "Unknown Customer",
           source: "Email Inquiry",
-          stage: "Potential",
+          stage: "Hot",
           priority: "Medium",
           value: 0,
           salesperson: "System AI",
@@ -176,16 +176,16 @@ export default function EmailPage() {
           notes: `Follow-up sent to ${emailObj.contact}.\nOriginal Subject: ${emailObj.subject}`
         };
 
-        const leadRes = await fetch("http://localhost:5000/api/sales/leads", {
+        const leadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/sales/leads`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
         if (leadRes.ok) {
-          toast.success("Lead automatically added to Potential section");
+          toast.success("Lead automatically added to Hot section");
         } else {
-          toast.error("Failed to add lead to Potential section");
+          toast.error("Failed to add lead to Hot section");
         }
       } else {
         const errorData = await res.json();

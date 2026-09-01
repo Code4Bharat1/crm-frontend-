@@ -37,7 +37,7 @@ export default function Page() {
           <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
             <li>Payment received against a PI is held advance until the invoice is raised.</li>
             <li>On conversion, the advance is auto-allocated to the invoice and the PI is closed in the same action.</li>
-            <li>A PI can never remain "Open" once its full value has been invoiced and paid.</li>
+            <li>A PI can never remain &quot;Open&quot; once its full value has been invoiced and paid.</li>
             <li>Any exception is listed in an accounts review queue with an audit entry.</li>
           </ul>
         </Section>

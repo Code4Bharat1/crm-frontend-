@@ -45,41 +45,18 @@ export default function AiPage() {
 
   const handleExtract = async () => {
     setLoading(true);
-    toast.info("Fetching latest email and extracting lead...");
+    toast.info("Fetching latest messages...");
     try {
-      const res = await fetch("http://localhost:5000/api/ai/extract-lead", {
-        method: "POST"
-      });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        toast.error(data.message || "Failed to extract lead");
-        setLoading(false);
-        return;
+      const res = await fetch("http://localhost:5000/api/ai/fetch-email");
+      if (res.ok) {
+        toast.success("Messages synced");
       }
-
-      setLeadData(data.lead);
-      setFormData({
-        customer: data.lead?.customer || "Sai Precision Auto",
-        contactPerson: data.lead?.contactPerson || "Sachin Patil",
-        product: data.lead?.product || "Compact PLC CPU Module (controller)",
-        quantity: data.lead?.quantity || "20 nos",
-        expectedValue: data.lead?.expectedValue || "₹4,00,000",
-        expectedDate: data.lead?.expectedDate || "30 Sep 2026",
-        area: data.lead?.area || "Chakan MIDC",
-        suggestedStage: data.lead?.suggestedStage || "Potential",
-        suggestedPriority: data.lead?.suggestedPriority || "High",
-        suggestedFollowUp: data.lead?.suggestedFollowUp || "16 Aug 2026",
-      });
-      setEmailDetails(data.email);
-      setText(data.email.text);
-      setExtracted(true);
-      toast.success("Extraction completed");
+      // Directly show the email page after fetching
+      window.location.href = '/email';
     } catch (err) {
       console.error(err);
-      toast.error("An error occurred during extraction.");
-    } finally {
-      setLoading(false);
+      toast.error("An error occurred during fetch.");
+      window.location.href = '/email';
     }
   };
 
@@ -89,7 +66,7 @@ export default function AiPage() {
         id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
         customerName: formData.customer || "Sai Precision Auto",
         source: "Email Inquiry",
-        stage: ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"].includes(formData.suggestedStage) ? formData.suggestedStage : "Potential",
+        stage: ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"].includes(formData.suggestedStage) ? formData.suggestedStage : "New",
         priority: ["Low", "Medium", "High", "Critical"].includes(formData.suggestedPriority) ? formData.suggestedPriority : "Medium",
         value: parseInt((formData.expectedValue || "400000").toString().replace(/[^0-9]/g, "")) || 400000,
         salesperson: "System AI",

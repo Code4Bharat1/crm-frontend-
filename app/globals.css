@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 0.976 0.006 240;
+    --foreground: 0.22 0.03 255;
+    --card: 1 0 0;
+    --card-foreground: 0.22 0.03 255;
+    --popover: 1 0 0;
+    --popover-foreground: 0.22 0.03 255;
+    --primary: 0.52 0.13 240;
+    --primary-foreground: 0.99 0 0;
+    --primary-dark: 0.34 0.09 250;
+    --secondary: 0.94 0.014 238;
+    --secondary-foreground: 0.32 0.07 250;
+    --muted: 0.955 0.008 240;
+    --muted-foreground: 0.52 0.025 250;
+    --accent: 0.845 0.16 90;
+    --accent-foreground: 0.25 0.04 255;
+    --destructive: 0.55 0.2 25;
+    --destructive-foreground: 0.99 0 0;
+    --success: 0.58 0.14 152;
+    --success-foreground: 0.99 0 0;
+    --warning: 0.72 0.16 62;
+    --warning-foreground: 0.22 0.03 255;
+    --info: 0.52 0.13 240;
+    --info-foreground: 0.99 0 0;
+    --border: 0.9 0.012 240;
+    --input: 0.9 0.012 240;
+    --ring: 0.52 0.13 240;
+    --chart-1: 0.52 0.13 240;
+    --chart-2: 0.845 0.16 90;
+    --chart-3: 0.58 0.14 152;
+    --chart-4: 0.34 0.09 250;
+    --chart-5: 0.66 0.14 30;
+    --sidebar: 0.26 0.055 253;
+    --sidebar-foreground: 0.88 0.02 240;
+    --sidebar-primary: 0.845 0.16 90;
+    --sidebar-primary-foreground: 0.24 0.04 255;
+    --sidebar-accent: 0.32 0.06 250;
+    --sidebar-accent-foreground: 0.97 0.005 240;
+    --sidebar-border: 0.34 0.05 252;
+    --sidebar-ring: 0.845 0.16 90;
+    
+    --shadow-panel: 0 1px 2px oklch(0.25 0.06 250 / 0.06), 0 8px 24px -16px oklch(0.25 0.06 250 / 0.25);
+    --shadow-raised: 0 2px 4px oklch(0.25 0.06 250 / 0.08), 0 16px 32px -18px oklch(0.25 0.06 250 / 0.3);
+  }
+
+  .dark {
+    --background: 0.19 0.03 255;
+    --foreground: 0.95 0.008 240;
+    --card: 0.24 0.035 254;
+    --card-foreground: 0.95 0.008 240;
+    --popover: 0.24 0.035 254;
+    --popover-foreground: 0.95 0.008 240;
+    --primary: 0.62 0.14 240;
+    --primary-foreground: 0.14 0.02 255;
+    --primary-dark: 0.3 0.07 250;
+    --secondary: 0.29 0.04 252;
+    --secondary-foreground: 0.95 0.008 240;
+    --muted: 0.28 0.035 252;
+    --muted-foreground: 0.72 0.02 245;
+    --accent: 0.845 0.16 90;
+    --accent-foreground: 0.22 0.03 255;
+    --destructive: 0.62 0.19 25;
+    --destructive-foreground: 0.99 0 0;
+    --success: 0.66 0.14 152;
+    --success-foreground: 0.14 0.02 255;
+    --warning: 0.76 0.15 62;
+    --warning-foreground: 0.18 0.02 255;
+    --info: 0.62 0.14 240;
+    --info-foreground: 0.14 0.02 255;
+    --border: 1 0 0; /* originally oklch(1 0 0 / 12%) - let tailwind handle opacity via border-border/12 if needed */
+    --input: 1 0 0;
+    --ring: 0.62 0.14 240;
+    --sidebar: 0.17 0.03 255;
+    --sidebar-foreground: 0.88 0.02 240;
+    --sidebar-primary: 0.845 0.16 90;
+    --sidebar-primary-foreground: 0.2 0.03 255;
+    --sidebar-accent: 0.27 0.04 252;
+    --sidebar-accent-foreground: 0.97 0.005 240;
+    --sidebar-border: 1 0 0;
+    --sidebar-ring: 0.845 0.16 90;
+  }
+}
+
+@layer base {
+  * {
+    border-color: oklch(var(--border));
+  }
+
+  body {
+    background-color: oklch(var(--background));
+    color: oklch(var(--foreground));
+    font-family: "Barlow", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: "Barlow Condensed", "Barlow", ui-sans-serif, sans-serif;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer components {
+  .panel {
+    background-color: oklch(var(--card));
+    border: 1px solid oklch(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .topbar-gradient {
+    background: linear-gradient(90deg, oklch(var(--primary-dark)), oklch(var(--primary)));
+  }
+}

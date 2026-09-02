@@ -1,25 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Bot, Mail, MessageCircle, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bot, CheckCircle2, Mail, MessageCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { Field, NotBuiltNotice, PageHeader, Section, StatusBadge } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 
 const SAMPLE = "Customer needs 20 controllers by next month and wants quotation. Site is at Chakan MIDC, contact Sachin Patil 9822xxxxx. Budget around 4 lakh.";
@@ -30,6 +19,7 @@ export default function AiPage() {
   const [extracted, setExtracted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [leadData, setLeadData] = useState(null);
+  const [leadCreated, setLeadCreated] = useState(false); // hides button after lead is added
   const [formData, setFormData] = useState({
     customer: "Sai Precision Auto",
     contactPerson: "Sachin Patil",
@@ -42,6 +32,21 @@ export default function AiPage() {
     suggestedPriority: "High",
     suggestedFollowUp: "16 Aug 2026"
   });
+
+  // On page load, check if the latest email already has a lead in DB
+  useEffect(() => {
+    fetch("http://localhost:5245/api/sales/leads")
+      .then(r => r.json())
+      .then(leads => {
+        if (Array.isArray(leads) && leads.some(l => l.source === "Email Inquiry" && l.sourceEmailId)) {
+          // If there's at least one Email Inquiry lead with an email UID,
+          // we check after extraction whether THIS specific email is covered.
+          // Store the set of known UIDs in a ref for use in handleExtract.
+          window.__existingLeadEmailIds = new Set(leads.map(l => l.sourceEmailId).filter(Boolean));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleExtract = async () => {
     setLoading(true);
@@ -62,22 +67,39 @@ export default function AiPage() {
       if (fetchedEmail) {
         setEmailDetails(fetchedEmail);
         setText(fetchedEmail.text || text);
+
+        // Check if a lead was already created from this exact email
+        const knownIds = window.__existingLeadEmailIds || new Set();
+        if (fetchedEmail.uid && knownIds.has(fetchedEmail.uid)) {
+          setLeadCreated(true);
+          toast.info("A lead already exists for this email.");
+          setLoading(false);
+          return;
+        }
       }
 
       // Populate the lead form from AI response
       if (lead) {
         setLeadData(lead);
+        // Helper: treat "N/A", "null", "none", empty as missing
+        const val = (v) => (!v || ['n/a','null','none','not specified','unknown',''].includes(v.toLowerCase().trim()) ? '' : v);
+
+        // Fallback sender name when AI can't identify company
+        const senderName = fetchedEmail
+          ? (fetchedEmail.from || '').split('<')[0].trim() || fetchedEmail.from
+          : '';
+
         setFormData({
-          customer: lead.customer || "",
-          contactPerson: lead.contactPerson || "",
-          product: lead.product || "",
-          quantity: lead.quantity || "",
-          expectedValue: lead.expectedValue || "",
-          expectedDate: lead.expectedDate || "",
-          area: lead.area || "",
-          suggestedStage: lead.suggestedStage || "Potential",
-          suggestedPriority: lead.suggestedPriority || "Medium",
-          suggestedFollowUp: lead.suggestedFollowUp || "",
+          customer: val(lead.customer) || senderName,
+          contactPerson: val(lead.contactPerson) || senderName,
+          product: val(lead.product) || 'Not specified',
+          quantity: val(lead.quantity) || 'Not specified',
+          expectedValue: val(lead.expectedValue) || '',
+          expectedDate: val(lead.expectedDate) || '',
+          area: val(lead.area) || 'Not specified',
+          suggestedStage: val(lead.suggestedStage) || 'Potential',
+          suggestedPriority: val(lead.suggestedPriority) || 'Medium',
+          suggestedFollowUp: val(lead.suggestedFollowUp) || '',
         });
         setExtracted(true);
         toast.success("Lead extracted successfully!");
@@ -92,16 +114,24 @@ export default function AiPage() {
 
   const handleConfirm = async () => {
     try {
+      const senderName = emailDetails
+        ? (emailDetails.from || '').split('<')[0].trim() || emailDetails.from
+        : 'Unknown Customer';
+
+      // Use sender name as fallback when AI returned N/A/empty
+      const isBlank = (v) => !v || ['n/a','null','none','not specified','unknown',''].includes(v.toLowerCase?.().trim());
+
       const payload = {
         id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
-        customerName: formData.customer || "Sai Precision Auto",
+        customerName: isBlank(formData.customer) ? senderName : formData.customer,
         source: "Email Inquiry",
         stage: ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"].includes(formData.suggestedStage) ? formData.suggestedStage : "New",
         priority: ["Low", "Medium", "High", "Critical"].includes(formData.suggestedPriority) ? formData.suggestedPriority : "Medium",
-        value: parseInt((formData.expectedValue || "400000").toString().replace(/[^0-9]/g, "")) || 400000,
+        value: parseInt((formData.expectedValue || "0").toString().replace(/[^0-9]/g, "")) || 0,
         salesperson: "System AI",
-        area: formData.area || "Chakan MIDC",
-        notes: `Requirement: ${leadData?.requirementSummary || "Generated from AI email parsing"}\n\nEmail Message: ${text}`
+        area: isBlank(formData.area) ? "Online" : formData.area,
+        notes: `Requirement: ${leadData?.requirementSummary || "Generated from AI email parsing"}\n\nEmail Message: ${text}`,
+        sourceEmailId: emailDetails?.uid || null,
       };
 
       const res = await fetch("http://localhost:5245/api/sales/leads", {
@@ -112,9 +142,27 @@ export default function AiPage() {
 
       if (res.ok) {
         toast.success("Lead created", { description: "Added to lead page successfully." });
-        setExtracted(false); // Reset to allow processing another email
+        setLeadCreated(true);
+        setExtracted(false);
         setLeadData(null);
+        if (emailDetails?.uid) {
+          window.__existingLeadEmailIds = window.__existingLeadEmailIds || new Set();
+          window.__existingLeadEmailIds.add(emailDetails.uid);
+          // Mark email as read → removes it from inbox on the Email page
+          fetch(`http://localhost:5245/api/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
+        }
         window.location.href = '/leads';
+      } else if (res.status === 409) {
+        const errorData = await res.json();
+        toast.warning(errorData.message || "Lead already exists for this email.", {
+          description: "Redirecting to leads page."
+        });
+        setLeadCreated(true);
+        setExtracted(false);
+        if (emailDetails?.uid) {
+          fetch(`http://localhost:5245/api/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
+        }
+        setTimeout(() => { window.location.href = '/leads'; }, 1200);
       } else {
         const errorData = await res.json();
         toast.error("Failed to create lead", { description: errorData.message || "Unknown error" });
@@ -124,6 +172,7 @@ export default function AiPage() {
       toast.error("Error connecting to server");
     }
   };
+
 
   return (
     <>
@@ -157,9 +206,17 @@ export default function AiPage() {
           <p className="mt-2 text-xs text-muted-foreground">
             Messages arrive from connected WhatsApp and email channels only. Nothing is typed in manually here.
           </p>
-          <Button disabled={loading} className="mt-3 gap-2 bg-accent font-bold text-accent-foreground hover:bg-accent/90" onClick={handleExtract}>
-            <Sparkles className="size-4" /> {loading ? "Extracting..." : "Extract structured lead"}
-          </Button>
+          {leadCreated ? (
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-4 py-2.5 text-sm font-semibold text-success">
+              <CheckCircle2 className="size-4 shrink-0" />
+              Lead added to Leads page —{" "}
+              <a href="/leads" className="underline underline-offset-2 hover:opacity-80">View leads</a>
+            </div>
+          ) : (
+            <Button disabled={loading} className="mt-3 gap-2 bg-accent font-bold text-accent-foreground hover:bg-accent/90" onClick={handleExtract}>
+              <Sparkles className="size-4" /> {loading ? "Extracting..." : "Extract structured lead"}
+            </Button>
+          )}
         </Section>
 
         <Section title="Proposed lead (review → edit → confirm)">
@@ -180,24 +237,10 @@ export default function AiPage() {
               <div className="rounded-md border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
                 Requirement summary: {leadData?.requirementSummary || "20 controllers required within a month, quotation requested. Next action — prepare quotation with commercial terms and share on WhatsApp."}
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button className="w-full bg-accent font-bold text-accent-foreground hover:bg-accent/90">Confirm & create lead</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Create lead from AI extraction?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      A lead will be created and linked to Sai Precision Auto with a follow-up on 16 Aug 2026. AI never creates
-                      quotations, invoices or payments without explicit approval.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirm}>Confirm</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button onClick={handleConfirm} className="w-full bg-accent font-bold text-accent-foreground hover:bg-accent/90">
+                Confirm & create lead
+              </Button>
+
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">

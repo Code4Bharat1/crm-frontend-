@@ -45,18 +45,48 @@ export default function AiPage() {
 
   const handleExtract = async () => {
     setLoading(true);
-    toast.info("Fetching latest messages...");
+    toast.info("Fetching and analysing latest email...");
     try {
-      const res = await fetch("http://localhost:5000/api/ai/fetch-email");
-      if (res.ok) {
-        toast.success("Messages synced");
+      const res = await fetch("http://localhost:5245/api/ai/extract-lead", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.message || "Extraction failed");
+        setLoading(false);
+        return;
       }
-      // Directly show the email page after fetching
-      window.location.href = '/email';
+
+      const { email: fetchedEmail, lead } = data;
+
+      // Show the fetched email in the message preview
+      if (fetchedEmail) {
+        setEmailDetails(fetchedEmail);
+        setText(fetchedEmail.text || text);
+      }
+
+      // Populate the lead form from AI response
+      if (lead) {
+        setLeadData(lead);
+        setFormData({
+          customer: lead.customer || "",
+          contactPerson: lead.contactPerson || "",
+          product: lead.product || "",
+          quantity: lead.quantity || "",
+          expectedValue: lead.expectedValue || "",
+          expectedDate: lead.expectedDate || "",
+          area: lead.area || "",
+          suggestedStage: lead.suggestedStage || "Potential",
+          suggestedPriority: lead.suggestedPriority || "Medium",
+          suggestedFollowUp: lead.suggestedFollowUp || "",
+        });
+        setExtracted(true);
+        toast.success("Lead extracted successfully!");
+      }
     } catch (err) {
       console.error(err);
-      toast.error("An error occurred during fetch.");
-      window.location.href = '/email';
+      toast.error("Could not connect to server. Is the backend running?");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,7 +104,7 @@ export default function AiPage() {
         notes: `Requirement: ${leadData?.requirementSummary || "Generated from AI email parsing"}\n\nEmail Message: ${text}`
       };
 
-      const res = await fetch("http://localhost:5000/api/sales/leads", {
+      const res = await fetch("http://localhost:5245/api/sales/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

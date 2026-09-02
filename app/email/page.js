@@ -35,7 +35,8 @@ export default function EmailPage() {
             contact: (d.from || "").match(/<([^>]+)>/)?.[1] || d.from,
             date: new Date(d.date).toISOString(),
             hasAttachment: false,
-            read: d.read || false
+            read: d.read || false,
+            followedUp: d.followedUp || false
           }));
           setEmails(formatted);
         }
@@ -67,7 +68,8 @@ export default function EmailPage() {
         contact: (d.from || "").match(/<([^>]+)>/)?.[1] || d.from,
         date: new Date(d.date).toISOString(),
         hasAttachment: false,
-        read: false
+        read: false,
+        followedUp: d.followedUp || false
       }));
 
       setEmails(prev => [...newEmails, ...prev]);
@@ -153,8 +155,8 @@ export default function EmailPage() {
 
   const handleFollowUp = async (emailObj) => {
     toast.info("Sending follow-up email...");
-    // Optimistic update
-    setEmails(prev => prev.map(e => e.id === emailObj.id ? { ...e, followedUp: true } : e));
+    // Optimistic update to remove it from UI (both Inbox and Sent sections)
+    setEmails(prev => prev.map(e => e.id === emailObj.id ? { ...e, followedUp: true, read: true } : e));
     
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/ai/emails/${emailObj.id}/follow-up`, {
@@ -163,12 +165,14 @@ export default function EmailPage() {
       if (res.ok) {
         toast.success("Follow-up email sent successfully");
 
-        // Automatically create lead in Hot stage
+        const targetStage = "Contacted";
+
+        // Automatically create lead
         const payload = {
           id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
           customerName: emailObj.customerName || "Unknown Customer",
           source: "Email Inquiry",
-          stage: "Hot",
+          stage: targetStage,
           priority: "Medium",
           value: 0,
           salesperson: "System AI",
@@ -183,9 +187,9 @@ export default function EmailPage() {
         });
 
         if (leadRes.ok) {
-          toast.success("Lead automatically added to Hot section");
+          toast.success(`Lead automatically added to ${targetStage} section`);
         } else {
-          toast.error("Failed to add lead to Hot section");
+          toast.error(`Failed to add lead to ${targetStage} section`);
         }
       } else {
         const errorData = await res.json();
@@ -237,7 +241,9 @@ export default function EmailPage() {
                         </Button>
                       )}
                       <Button size="sm" variant="outline" onClick={() => markAsRead(e.id)}>Mark as read</Button>
-                      <Button size="sm" variant="outline">Add follow-up</Button>
+                      {!e.followedUp && (
+                        <Button size="sm" variant="outline" onClick={() => handleFollowUp(e)}>Add follow-up</Button>
+                      )}
                       <Button size="sm" variant="outline">Link to quotation</Button>
                     </div>
                   </li>
@@ -251,7 +257,7 @@ export default function EmailPage() {
 
           <Section title="Contacted (Sent)">
             <ul className="space-y-2">
-              {emails.filter(e => e.direction === "Outgoing" && !e.followedUp).map((e) => (
+              {emails.filter(e => e.direction === "Outgoing").map((e) => (
                 <li key={e.id} className="rounded-md border border-border bg-muted/20 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-semibold">{e.subject}</p>
@@ -262,12 +268,16 @@ export default function EmailPage() {
                     To: {e.customerName} · {e.contact} · {fmtDateTime(e.date)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleFollowUp(e)}>Add follow-up</Button>
+                    {!e.followedUp ? (
+                      <Button size="sm" variant="outline" onClick={() => handleFollowUp(e)}>Add follow-up</Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" disabled>Follow-up Sent</Button>
+                    )}
                   </div>
                 </li>
               ))}
-              {emails.filter(e => e.direction === "Outgoing" && !e.followedUp).length === 0 && (
-                <p className="text-sm text-muted-foreground italic">No sent messages found pending follow-up.</p>
+              {emails.filter(e => e.direction === "Outgoing").length === 0 && (
+                <p className="text-sm text-muted-foreground italic">No sent messages found.</p>
               )}
             </ul>
           </Section>

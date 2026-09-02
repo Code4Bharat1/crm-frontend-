@@ -104,6 +104,28 @@ function DataTable({
   }, [q, rows]);
   const pages = Math.max(1, Math.ceil(filtered.length / perPage));
   const view = filtered.slice(page * perPage, page * perPage + perPage);
+  const handleExport = () => {
+    if (!rows || rows.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    const headers = Object.keys(rows[0]).filter(k => typeof rows[0][k] !== 'object');
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => headers.map(key => `"${String(row[key] ?? '').replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `export-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Export successful", { description: "Data downloaded as CSV (Excel compatible)." });
+  };
+
   return /* @__PURE__ */ React.createElement("div", { className: "panel overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2 border-b border-border p-3" }, /* @__PURE__ */ React.createElement("div", { className: "relative min-w-[200px] flex-1" }, /* @__PURE__ */ React.createElement(Search, { className: "pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" }), /* @__PURE__ */ React.createElement(
     Input,
     {
@@ -120,7 +142,7 @@ function DataTable({
     {
       variant: "secondary",
       className: "h-10 gap-2",
-      onClick: () => toast.success("Export queued", { description: "Excel/PDF export will be generated." })
+      onClick: handleExport
     },
     /* @__PURE__ */ React.createElement(Download, { className: "size-4" }),
     " Export"

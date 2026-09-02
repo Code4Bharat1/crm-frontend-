@@ -21,10 +21,38 @@ const TEMPLATES = [
 ];
 
 export default function WhatsAppPage() {
-  const threads = customers.slice(0, 8);
+  const threads = [
+    {
+      id: "cust-target",
+      name: "Target Lead",
+      contacts: [{ name: "Target Lead", phone: "89763 22917" }]
+    }
+  ];
   const [active, setActive] = useState(threads[0].id);
-  const cust = threads.find((c) => c.id === active);
-  const msgs = communications.filter((c) => c.channel === "WhatsApp").slice(0, 6);
+  const cust = threads[0];
+  // Make sure we have a direction for the initial static messages
+  const initialMsgs = communications.filter((c) => c.channel === "WhatsApp").slice(0, 6).map((m, i) => ({
+    ...m,
+    direction: i % 2 === 0 ? "Incoming" : "Outgoing"
+  }));
+
+  const [chatMsgs, setChatMsgs] = useState(initialMsgs);
+  const [messageText, setMessageText] = useState("");
+
+  const handleSend = () => {
+    if (!messageText.trim()) return;
+    
+    const newMsg = {
+      id: `msg-${Date.now()}`,
+      preview: messageText,
+      date: new Date().toISOString(),
+      channel: "WhatsApp",
+      direction: "Outgoing"
+    };
+
+    setChatMsgs(prev => [...prev, newMsg]);
+    setMessageText("");
+  };
 
   return (
     <>
@@ -56,18 +84,24 @@ export default function WhatsAppPage() {
 
         <Section title={cust.name} description={`${cust.contacts[0].name} · ${cust.contacts[0].phone}`}>
           <div className="space-y-3">
-            {msgs.map((m, i) => (
-              <div key={m.id} className={`max-w-[85%] rounded-lg border p-3 text-sm ${i % 2 ? "ml-auto border-success/30 bg-success/10" : "border-border bg-muted"}`}>
+            {chatMsgs.map((m) => (
+              <div key={m.id} className={`max-w-[85%] rounded-lg border p-3 text-sm ${m.direction === "Outgoing" ? "ml-auto border-success/30 bg-success/10" : "border-border bg-muted"}`}>
                 <p>{m.preview}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{fmtDateTime(m.date)} · {i % 2 ? "CONTECH" : cust.contacts[0].name}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{fmtDateTime(m.date)} · {m.direction === "Outgoing" ? "CONTECH" : cust.contacts[0].name}</p>
               </div>
             ))}
           </div>
           <div className="mt-4 flex items-center gap-2">
             <Button variant="outline" size="icon"><Paperclip className="size-4" /></Button>
             <Button variant="outline" size="icon"><Mic className="size-4" /></Button>
-            <Input placeholder="Type a message…" className="h-11" />
-            <Button className="h-11 gap-2 bg-accent font-bold text-accent-foreground hover:bg-accent/90" onClick={() => toast.error("WhatsApp not connected", { description: "Configure the WhatsApp Business API to enable sending." })}>
+            <Input 
+              placeholder="Type a message…" 
+              className="h-11" 
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            <Button className="h-11 gap-2 bg-accent font-bold text-accent-foreground hover:bg-accent/90" onClick={handleSend}>
               <Send className="size-4" /> Send
             </Button>
           </div>

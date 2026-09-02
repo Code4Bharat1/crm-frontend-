@@ -63,8 +63,11 @@ import {
   CommandList
 } from "@/components/ui/command";
 import { StatusBadge } from "@/components/crm-ui";
-import { currentUser, globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
+import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
+import { getUser, hasPermission, clearAuthData } from "@/lib/authUtils";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 const NAV = [
   { group: "Overview", items: [{ label: "Dashboard", href: "/", icon: LayoutDashboard }] },
   {
@@ -153,9 +156,24 @@ const QUICK_ACTIONS = [
   "Create Service Request",
   "Add Follow-up"
 ];
+
+const getFilteredNav = () => {
+  const isFinancial = hasPermission('financial');
+  const isAdmin = hasPermission('admin');
+  const isApprove = hasPermission('approve'); // Often used for HR and Admin
+
+  return NAV.map(group => {
+    if (group.group === "Finance" && !isFinancial) return null;
+    if (group.group === "Administration" && !isAdmin) return null;
+    if (group.group === "People" && !isAdmin && !isApprove) return null;
+    return group;
+  }).filter(Boolean);
+};
+
 function SidebarNav({ onNavigate }) {
   const pathname = usePathname();
-  return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto px-2 py-3" }, NAV.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
+  const filteredNav = getFilteredNav();
+  return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto px-2 py-3" }, filteredNav.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
     const active = it.href === "/" ? pathname === "/" : pathname.startsWith(it.href);
     return /* @__PURE__ */ React.createElement("li", { key: it.href }, /* @__PURE__ */ React.createElement(
       Link,
@@ -179,6 +197,49 @@ function AppShell({ children }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+  
+  const currentUser = getUser();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      if (pathname !== '/login') {
+        router.push('/login');
+      }
+    } else {
+      const isFinancePath = pathname.startsWith('/ledger') || pathname.startsWith('/banking') || pathname.startsWith('/gst');
+      const isAdminPath = pathname.startsWith('/users-roles') || pathname.startsWith('/audit-logs') || pathname.startsWith('/company-settings') || pathname.startsWith('/administration');
+      
+      if (isFinancePath && !hasPermission('financial')) {
+        toast.error("You are not authorized to view financial modules.");
+        router.push('/');
+      } else if (isAdminPath && !hasPermission('admin')) {
+        toast.error("You are not authorized to view administrative modules.");
+        router.push('/');
+      }
+    }
+  }, [currentUser, router, pathname]);
+
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = (e) => {
+    e.preventDefault();
+    clearAuthData();
+    router.push('/login');
+  };
+
+  if (!mounted) return null; // Wait for client hydration
+  
+  if (!currentUser) return null; // Avoid rendering before redirect
+
   const hits = globalSearch(q);
   const unread = notifications.filter((n) => !n.read).length;
   return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen bg-background" }, /* @__PURE__ */ React.createElement("aside", { className: "sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex" }, /* @__PURE__ */ React.createElement(Brand, null), /* @__PURE__ */ React.createElement(SidebarNav, null), /* @__PURE__ */ React.createElement("div", { className: "border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60" }, "CONTECH Platform \xB7 Prototype v0.9")), /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 flex-1 flex-col" }, /* @__PURE__ */ React.createElement("header", { className: "topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md" }, /* @__PURE__ */ React.createElement(Sheet, { open: mobileOpen, onOpenChange: setMobileOpen }, /* @__PURE__ */ React.createElement(SheetTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "icon", className: "text-primary-foreground hover:bg-white/15 lg:hidden" }, /* @__PURE__ */ React.createElement(Menu, { className: "size-5" }))), /* @__PURE__ */ React.createElement(SheetContent, { side: "left", className: "w-72 bg-sidebar p-0 text-sidebar-foreground" }, /* @__PURE__ */ React.createElement(SheetTitle, { className: "sr-only" }, "Navigation"), /* @__PURE__ */ React.createElement("div", { className: "flex h-full flex-col" }, /* @__PURE__ */ React.createElement(Brand, null), /* @__PURE__ */ React.createElement(SidebarNav, { onNavigate: () => setMobileOpen(false) })))), /* @__PURE__ */ React.createElement(
@@ -196,7 +257,7 @@ function AppShell({ children }) {
       onSelect: () => toast.info(a, { description: "Prototype form \u2014 connect backend to persist this record." })
     },
     a
-  )))), /* @__PURE__ */ React.createElement(Sheet, null, /* @__PURE__ */ React.createElement(SheetTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "icon", className: "relative text-primary-foreground hover:bg-white/15" }, /* @__PURE__ */ React.createElement(Bell, { className: "size-5" }), unread > 0 ? /* @__PURE__ */ React.createElement("span", { className: "absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground" }, unread) : null)), /* @__PURE__ */ React.createElement(SheetContent, { className: "w-full sm:max-w-md" }, /* @__PURE__ */ React.createElement(SheetTitle, { className: "px-4 pt-4" }, "Notification centre"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 overflow-y-auto p-4" }, notifications.map((n) => /* @__PURE__ */ React.createElement("div", { key: n.id, className: "rounded-md border border-border bg-card p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: n.type }), /* @__PURE__ */ React.createElement("span", { className: "text-[11px] text-muted-foreground" }, fmtDateTime(n.at))), /* @__PURE__ */ React.createElement("p", { className: "mt-1.5 text-sm font-semibold" }, n.title), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-muted-foreground" }, n.detail)))))), /* @__PURE__ */ React.createElement(DropdownMenu, null, /* @__PURE__ */ React.createElement(DropdownMenuTrigger, { asChild: true }, /* @__PURE__ */ React.createElement("button", { className: "flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/15" }, /* @__PURE__ */ React.createElement("span", { className: "flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground" }, currentUser.name.split(" ").map((n) => n[0]).join("")), /* @__PURE__ */ React.createElement("span", { className: "hidden text-left leading-tight sm:block" }, /* @__PURE__ */ React.createElement("span", { className: "block text-xs font-semibold" }, currentUser.name), /* @__PURE__ */ React.createElement("span", { className: "block text-[11px] text-white/70" }, currentUser.role)))), /* @__PURE__ */ React.createElement(DropdownMenuContent, { align: "end", className: "w-52" }, /* @__PURE__ */ React.createElement(DropdownMenuLabel, null, currentUser.email), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/users-roles" }, "Role & permissions")), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/audit-logs" }, "My audit trail")), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/login", className: "text-destructive" }, /* @__PURE__ */ React.createElement(LogOut, { className: "mr-2 size-4" }), " Sign out"))))), /* @__PURE__ */ React.createElement("main", { className: "min-w-0 flex-1 p-4 sm:p-6" }, children)), /* @__PURE__ */ React.createElement(CommandDialog, { open: searchOpen, onOpenChange: setSearchOpen }, /* @__PURE__ */ React.createElement(CommandInput, { placeholder: "Try SO-1024, INV-1004, Shakti, CT-ISO, PRJ-303\u2026", value: q, onValueChange: setQ }), /* @__PURE__ */ React.createElement(CommandList, null, /* @__PURE__ */ React.createElement(CommandEmpty, null, "Type a customer, document number, product code or serial number."), hits.length > 0 ? /* @__PURE__ */ React.createElement(CommandGroup, { heading: `${hits.length} matches across all modules` }, hits.map((h) => /* @__PURE__ */ React.createElement(CommandItem, { key: `${h.kind}-${h.label}`, value: `${h.label} ${h.sub} ${h.kind}`, asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: h.href, onClick: () => setSearchOpen(false), className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: h.kind }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, h.label), /* @__PURE__ */ React.createElement("span", { className: "ml-auto text-xs text-muted-foreground" }, h.sub))))) : null)));
+  )))), /* @__PURE__ */ React.createElement(Sheet, null, /* @__PURE__ */ React.createElement(SheetTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "icon", className: "relative text-primary-foreground hover:bg-white/15" }, /* @__PURE__ */ React.createElement(Bell, { className: "size-5" }), unread > 0 ? /* @__PURE__ */ React.createElement("span", { className: "absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground" }, unread) : null)), /* @__PURE__ */ React.createElement(SheetContent, { className: "w-full sm:max-w-md" }, /* @__PURE__ */ React.createElement(SheetTitle, { className: "px-4 pt-4" }, "Notification centre"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 overflow-y-auto p-4" }, notifications.map((n) => /* @__PURE__ */ React.createElement("div", { key: n.id, className: "rounded-md border border-border bg-card p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: n.type }), /* @__PURE__ */ React.createElement("span", { className: "text-[11px] text-muted-foreground" }, fmtDateTime(n.at))), /* @__PURE__ */ React.createElement("p", { className: "mt-1.5 text-sm font-semibold" }, n.title), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-muted-foreground" }, n.detail)))))), /* @__PURE__ */ React.createElement(DropdownMenu, null, /* @__PURE__ */ React.createElement(DropdownMenuTrigger, { asChild: true }, /* @__PURE__ */ React.createElement("button", { className: "flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/15" }, /* @__PURE__ */ React.createElement("span", { className: "flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground" }, currentUser.name.split(" ").map((n) => n[0]).join("")), /* @__PURE__ */ React.createElement("span", { className: "hidden text-left leading-tight sm:block" }, /* @__PURE__ */ React.createElement("span", { className: "block text-xs font-semibold" }, currentUser.name), /* @__PURE__ */ React.createElement("span", { className: "block text-[11px] text-white/70" }, currentUser.role)))), /* @__PURE__ */ React.createElement(DropdownMenuContent, { align: "end", className: "w-52" }, /* @__PURE__ */ React.createElement(DropdownMenuLabel, null, currentUser.email), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/users-roles" }, "Role & permissions")), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/audit-logs" }, "My audit trail")), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement("button", { onClick: handleLogout, className: "w-full text-left text-destructive flex items-center" }, /* @__PURE__ */ React.createElement(LogOut, { className: "mr-2 size-4" }), " Sign out"))))), /* @__PURE__ */ React.createElement("main", { className: "min-w-0 flex-1 p-4 sm:p-6" }, children)), /* @__PURE__ */ React.createElement(CommandDialog, { open: searchOpen, onOpenChange: setSearchOpen }, /* @__PURE__ */ React.createElement(CommandInput, { placeholder: "Try SO-1024, INV-1004, Shakti, CT-ISO, PRJ-303\u2026", value: q, onValueChange: setQ }), /* @__PURE__ */ React.createElement(CommandList, null, /* @__PURE__ */ React.createElement(CommandEmpty, null, "Type a customer, document number, product code or serial number."), hits.length > 0 ? /* @__PURE__ */ React.createElement(CommandGroup, { heading: `${hits.length} matches across all modules` }, hits.map((h) => /* @__PURE__ */ React.createElement(CommandItem, { key: `${h.kind}-${h.label}`, value: `${h.label} ${h.sub} ${h.kind}`, asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: h.href, onClick: () => setSearchOpen(false), className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: h.kind }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, h.label), /* @__PURE__ */ React.createElement("span", { className: "ml-auto text-xs text-muted-foreground" }, h.sub))))) : null)));
 }
 export {
   AppShell

@@ -19,6 +19,7 @@ import {
   productSales, projects, projectMargin, salesByPerson,
   serviceRequests, TOTAL_PRODUCT_MASTER_COUNT,
 } from "@/lib/crm-data";
+import { AttendanceWidget } from "@/components/AttendanceWidget";
 
 const CHART_COLORS = ["oklch(var(--chart-1))", "oklch(var(--chart-2))", "oklch(var(--chart-3))", "oklch(var(--chart-4))", "oklch(var(--chart-5))"];
 
@@ -55,6 +56,8 @@ export default function Dashboard() {
           </>
         }
       />
+      
+      <AttendanceWidget />
 
       <FilterBar items={["This month", "This quarter", "FY 2026-27", "All salespeople", "All areas"]} />
 

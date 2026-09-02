@@ -19,6 +19,8 @@ export default function EmailPage() {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [extractingId, setExtractingId] = useState(null);
+  // Set of email UIDs that already have a lead created — prevents showing "Create Lead" again
+  const [leadEmailIds, setLeadEmailIds] = useState(new Set());
 
   // Load saved emails from MongoDB
   useEffect(() => {
@@ -44,7 +46,20 @@ export default function EmailPage() {
         }
       })
       .catch(err => console.error("Error loading emails:", err));
+
+    // Fetch all existing leads and collect their sourceEmailIds
+    // so we can hide "Create Lead" for emails that already have a lead
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`)
+      .then(res => res.json())
+      .then(leads => {
+        if (Array.isArray(leads)) {
+          const ids = new Set(leads.map(l => l.sourceEmailId).filter(Boolean));
+          setLeadEmailIds(ids);
+        }
+      })
+      .catch(() => {}); // silent — don't block page load
   }, []);
+
 
   const handleFetch = async () => {
     setLoading(true);
@@ -52,15 +67,15 @@ export default function EmailPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/fetch-email`);
       const data = await res.json();
-      
+
       if (!res.ok) {
         toast.error(data.message || "Failed to fetch email");
         setLoading(false);
         return;
       }
 
-      const newEmails = data.emails.map(d => ({
-        id: `email-${Date.now()}-${Math.random()}`,
+      const newEmails = (data.emails || []).map(d => ({
+        id: d.uid || `email-${Date.now()}-${Math.random()}`,
         channel: "Email",
         subject: d.subject,
         direction: d.direction || "Incoming",
@@ -76,6 +91,15 @@ export default function EmailPage() {
 
       setEmails(prev => [...newEmails, ...prev]);
       toast.success("Fetched latest email successfully");
+
+      // Show toast for every lead the backend auto-progressed to Potential
+      (data.progressions || []).forEach(p => {
+        toast.info(
+          `Lead for "${p.customerName}" moved to Potential`,
+          { description: "They replied again after being contacted." }
+        );
+      });
+
     } catch (err) {
       console.error(err);
       toast.error("Error connecting to server");
@@ -83,6 +107,8 @@ export default function EmailPage() {
       setLoading(false);
     }
   };
+
+
 
   const markAsRead = async (id) => {
     // Optimistic update to remove it from UI immediately
@@ -144,14 +170,16 @@ export default function EmailPage() {
       if (res.ok) {
         toast.success("Lead created! Redirecting to leads page...");
         setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
+        setLeadEmailIds(prev => new Set([...prev, email.id])); // hide button immediately
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
         setTimeout(() => router.push('/leads'), 800);
       } else if (res.status === 409) {
-        // Duplicate — lead already exists, just navigate there
+        // Duplicate — lead already exists
         const dupData = await res.json();
         toast.warning(dupData.message || "This lead already exists.", {
           description: "Redirecting to the leads page."
         });
+        setLeadEmailIds(prev => new Set([...prev, email.id])); // hide button immediately
         setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
         setTimeout(() => router.push('/leads'), 1200);
@@ -169,51 +197,54 @@ export default function EmailPage() {
 
   const handleFollowUp = async (emailObj) => {
     toast.info("Sending follow-up email...");
-    // Optimistic update to remove it from UI (both Inbox and Sent sections)
+    // Optimistic update to remove it from UI
     setEmails(prev => prev.map(e => e.id === emailObj.id ? { ...e, followedUp: true, read: true } : e));
-    
+
     try {
+      // 1. Send the actual follow-up email via backend
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${emailObj.id}/follow-up`, {
         method: 'POST'
       });
-      if (res.ok) {
-        toast.success("Follow-up email sent successfully");
 
-        const targetStage = "Contacted";
-
-        // Automatically create lead
-        const payload = {
-          id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
-          customerName: emailObj.customerName || "Unknown Customer",
-          source: "Email Inquiry",
-          stage: targetStage,
-          priority: "Medium",
-          value: 0,
-          salesperson: "System AI",
-          area: "Online",
-          notes: `Follow-up sent to ${emailObj.contact}.\nOriginal Subject: ${emailObj.subject}`
-        };
-
-        const leadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (leadRes.ok) {
-          toast.success(`Lead automatically added to ${targetStage} section`);
-        } else {
-          toast.error(`Failed to add lead to ${targetStage} section`);
-        }
-      } else {
+      if (!res.ok) {
         const errorData = await res.json();
         toast.error("Failed to send follow-up", { description: errorData.message });
+        return;
+      }
+
+      toast.success("Follow-up email sent successfully");
+
+      // 2. Move/create the lead into "Contacted" stage
+      const leadRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads/by-email/${emailObj.id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: emailObj.customerName || "Unknown Customer",
+            contact: emailObj.contact,
+            subject: emailObj.subject,
+            notes: `Follow-up sent to ${emailObj.contact}.\nOriginal Subject: ${emailObj.subject}`
+          })
+        }
+      );
+
+      if (leadRes.ok) {
+        const leadData = await leadRes.json();
+        if (leadData.updated) {
+          toast.success("Lead moved to Contacted section in Leads page");
+        } else {
+          toast.success("Lead added to Contacted section in Leads page");
+        }
+      } else {
+        toast.error("Follow-up sent but failed to update lead stage");
       }
     } catch (err) {
       console.error(err);
       toast.error("Error sending follow-up email");
     }
   };
+
 
   return (
     <>
@@ -245,7 +276,12 @@ export default function EmailPage() {
                       {e.customerName} · {e.contact} · {fmtDateTime(e.date)}{e.hasAttachment ? " · 1 attachment" : ""}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {!isContacted ? (
+                      {leadEmailIds.has(e.id) ? (
+                        // Lead already exists for this email — hide the create button
+                        <Button size="sm" variant="secondary" disabled className="gap-1.5">
+                          <span className="text-success">✓</span> Lead Created
+                        </Button>
+                      ) : !isContacted ? (
                         <Button size="sm" variant="outline" disabled={extractingId === e.id} onClick={() => handleCreateLead(e)}>
                           {extractingId === e.id ? "Creating..." : "Create Lead"}
                         </Button>

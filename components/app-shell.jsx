@@ -40,7 +40,8 @@ import {
   Bot,
   Mail,
   MessageCircle,
-  Percent
+  Percent,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ const NAV = [
     items: [
       { label: "Reports", href: "/reports", icon: BarChart3 },
       { label: "Notifications", href: "/notifications", icon: Bell },
+      { label: "Company Settings", href: "/company-settings", icon: Building2 },
       { label: "Data Migration", href: "/migration", icon: Upload },
       { label: "Users & Roles", href: "/users-roles", icon: Lock },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText },

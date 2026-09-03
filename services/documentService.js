@@ -13,6 +13,7 @@ const req = async (path, options = {}) => {
 // ─── Company ────────────────────────────────────────────────────────────────
 export const getCompany = () => req('/company');
 export const updateCompany = (data) => req('/company', { method: 'PUT', body: JSON.stringify(data) });
+export const uploadCompanyMedia = (data) => req('/company/upload', { method: 'POST', body: JSON.stringify(data) });
 
 // ─── Customers ──────────────────────────────────────────────────────────────
 export const getCustomers = (params = {}) => req('/customers?' + new URLSearchParams(params));

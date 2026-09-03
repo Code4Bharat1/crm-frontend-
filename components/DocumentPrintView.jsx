@@ -23,6 +23,16 @@ const docTypeConfig = {
   "Purchase Order":   { color: "#0891b2", accent: "#cffafe", label: "PURCHASE ORDER",    noField: "poNo" },
 };
 
+const resolveMediaUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image')) {
+    return url;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5245/api';
+  const backendBase = apiBase.replace(/\/api$/, '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 export function DocumentPrintView({ doc, type, company, onClose }) {
   const printRef = useRef();
   const cfg = docTypeConfig[type] || docTypeConfig["Quotation"];
@@ -66,6 +76,7 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
         .bg-gray { background: #f8fafc; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        img { max-width: 100%; }
         @media print {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
@@ -76,7 +87,7 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
       </body></html>
     `);
     win.document.close();
-    setTimeout(() => win.print(), 400);
+    setTimeout(() => win.print(), 500);
   };
 
   return (
@@ -109,23 +120,50 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
         {/* ─── LETTERHEAD ─────────────────────────────────────────── */}
         <div style={{ borderTop: `6px solid ${cfg.color}`, padding: "24px 32px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            {/* Company Info */}
-            <div>
-              <div style={{ fontSize: "22px", fontWeight: "800", color: cfg.color, letterSpacing: "-0.5px" }}>
-                {company?.name || "Nexcore Alliance Pvt. Ltd."}
-              </div>
-              <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-                {company?.tagline || "Automation & Industrial Solutions"}
-              </div>
-              <div style={{ fontSize: "10px", color: "#475569", marginTop: "6px", lineHeight: "1.6" }}>
-                {company?.address?.line1 && <div>{company.address.line1}</div>}
-                {company?.address?.line2 && <div>{company.address.line2}</div>}
-                {company?.phone && <div>📞 {company.phone}</div>}
-                {company?.email && <div>✉ {company.email}</div>}
-              </div>
-              <div style={{ fontSize: "10px", color: "#475569", marginTop: "4px" }}>
-                {company?.gstNumber && <span>GST: <strong>{company.gstNumber}</strong>  </span>}
-                {company?.panNumber && <span>PAN: <strong>{company.panNumber}</strong></span>}
+            {/* Company Info & Logo */}
+            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", maxWidth: "68%" }}>
+              {company?.logoUrl && (
+                <div style={{ flexShrink: 0, marginTop: "2px" }}>
+                  <img
+                    src={resolveMediaUrl(company.logoUrl)}
+                    alt={company?.name || "Company Logo"}
+                    style={{ maxHeight: "68px", maxWidth: "150px", objectFit: "contain", borderRadius: "4px" }}
+                  />
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: "20px", fontWeight: "800", color: cfg.color, letterSpacing: "-0.5px", lineHeight: "1.2" }}>
+                  {company?.name || "Nexcore Alliance Pvt. Ltd."}
+                </div>
+                {company?.tagline && (
+                  <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
+                    {company.tagline}
+                  </div>
+                )}
+                <div style={{ fontSize: "10px", color: "#475569", marginTop: "6px", lineHeight: "1.5" }}>
+                  {company?.address?.line1 && <div>{company.address.line1}</div>}
+                  {company?.address?.line2 && <div>{company.address.line2}</div>}
+                  {(company?.address?.city || company?.address?.state || company?.address?.pinCode || company?.address?.country) && (
+                    <div>
+                      {[
+                        company?.address?.city,
+                        company?.address?.state,
+                        company?.address?.pinCode ? `- ${company.address.pinCode}` : null,
+                        company?.address?.country
+                      ].filter(Boolean).join(", ")}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginTop: "3px" }}>
+                    {company?.phone && <span>📞 {company.phone}</span>}
+                    {company?.email && <span>✉ {company.email}</span>}
+                    {company?.website && <span>🌐 {company.website}</span>}
+                  </div>
+                </div>
+                <div style={{ fontSize: "10px", color: "#475569", marginTop: "4px", display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                  {company?.gstNumber && <span>GSTIN: <strong>{company.gstNumber}</strong></span>}
+                  {company?.panNumber && <span>PAN: <strong>{company.panNumber}</strong></span>}
+                  {company?.cinNumber && <span>CIN: <strong>{company.cinNumber}</strong></span>}
+                </div>
               </div>
             </div>
             {/* Document Badge */}
@@ -254,10 +292,12 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
           )}
 
           {/* Terms */}
-          {doc.termsAndConditions && (
+          {(doc.termsAndConditions || company?.termsAndConditions) && (
             <div style={{ marginTop: "20px", fontSize: "10px" }}>
               <div style={{ fontWeight: "700", marginBottom: "4px", color: "#374151" }}>Terms & Conditions</div>
-              <div style={{ color: "#6b7280", whiteSpace: "pre-line", lineHeight: "1.6" }}>{doc.termsAndConditions}</div>
+              <div style={{ color: "#6b7280", whiteSpace: "pre-line", lineHeight: "1.6" }}>
+                {doc.termsAndConditions || company?.termsAndConditions}
+              </div>
             </div>
           )}
 
@@ -268,30 +308,76 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
           )}
 
           {/* ─── FOOTER / SIGNATURE ─────────────────────────────── */}
-          <div style={{ marginTop: "32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+          <div style={{ marginTop: "32px", display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "24px", alignItems: "flex-end" }}>
             {/* Bank Details */}
-            {company?.bankDetails && !isDelivery && (
+            {company?.bankDetails && !isDelivery ? (
               <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "12px" }}>
                 <div style={{ fontSize: "9px", fontWeight: "700", color: cfg.color, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px" }}>
                   Bank Details
                 </div>
                 <div style={{ fontSize: "10px", lineHeight: "1.8" }}>
-                  <div><strong>Bank:</strong> {company.bankDetails.bankName}</div>
-                  <div><strong>A/C Name:</strong> {company.bankDetails.accountName}</div>
-                  <div><strong>A/C No:</strong> {company.bankDetails.accountNumber}</div>
-                  <div><strong>IFSC:</strong> {company.bankDetails.ifscCode}</div>
+                  {company.bankDetails.bankName && <div><strong>Bank:</strong> {company.bankDetails.bankName}</div>}
+                  {company.bankDetails.accountName && <div><strong>A/C Name:</strong> {company.bankDetails.accountName}</div>}
+                  {company.bankDetails.accountNumber && <div><strong>A/C No:</strong> {company.bankDetails.accountNumber}</div>}
+                  {company.bankDetails.ifscCode && <div><strong>IFSC:</strong> {company.bankDetails.ifscCode}</div>}
                   {company.bankDetails.branch && <div><strong>Branch:</strong> {company.bankDetails.branch}</div>}
+                  {company.bankDetails.swiftCode && <div><strong>SWIFT / BIC:</strong> {company.bankDetails.swiftCode}</div>}
+                  {company.bankDetails.upiId && <div><strong>UPI ID:</strong> {company.bankDetails.upiId}</div>}
                 </div>
               </div>
-            )}
+            ) : <div />}
 
-            {/* Authorised Signatory */}
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "10px", color: "#6b7280", marginBottom: "40px" }}>
+            {/* Authorised Signatory & Stamp */}
+            <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <div style={{ fontSize: "10px", color: "#374151", fontWeight: "600", marginBottom: "6px" }}>
                 {company?.signatureText || "For Nexcore Alliance Pvt. Ltd."}
               </div>
-              <div style={{ borderTop: "1px solid #cbd5e1", paddingTop: "6px" }}>
-                <div style={{ fontSize: "10px", fontWeight: "700" }}>Authorised Signatory</div>
+
+              {/* Stamp & Signature container */}
+              <div style={{
+                position: "relative",
+                minHeight: "75px",
+                width: "200px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "4px"
+              }}>
+                {company?.stampUrl && (
+                  <img
+                    src={resolveMediaUrl(company.stampUrl)}
+                    alt="Official Stamp"
+                    style={{
+                      maxHeight: "70px",
+                      maxWidth: "110px",
+                      objectFit: "contain",
+                      opacity: 0.88,
+                      position: company?.signatureUrl ? "absolute" : "relative",
+                      right: company?.signatureUrl ? "50px" : "auto",
+                      pointerEvents: "none"
+                    }}
+                  />
+                )}
+                {company?.signatureUrl && (
+                  <img
+                    src={resolveMediaUrl(company.signatureUrl)}
+                    alt="Authorised Signature"
+                    style={{
+                      maxHeight: "55px",
+                      maxWidth: "140px",
+                      objectFit: "contain",
+                      zIndex: 1,
+                      position: "relative"
+                    }}
+                  />
+                )}
+                {!company?.stampUrl && !company?.signatureUrl && (
+                  <div style={{ height: "45px" }} />
+                )}
+              </div>
+
+              <div style={{ borderTop: "1px solid #94a3b8", paddingTop: "5px", width: "190px", textAlign: "center" }}>
+                <div style={{ fontSize: "10px", fontWeight: "700", color: "#1e293b" }}>Authorised Signatory</div>
               </div>
             </div>
           </div>
@@ -303,7 +389,7 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
             fontSize: "9px", color: "#94a3b8"
           }}>
             <span>{company?.footerNote || "This is a computer generated document."}</span>
-            <span>{company?.website}</span>
+            <span>{company?.website || company?.email || ""}</span>
             <span>Page 1 of 1</span>
           </div>
         </div>

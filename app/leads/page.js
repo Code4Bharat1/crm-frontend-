@@ -295,7 +295,6 @@ export default function LeadsPage() {
                                   >
                                     <Send className="size-3" /> Send Email
                                   </Button>
-                                  <StatusBadge value={l.source === "Email Inquiry" ? "Pending" : "Active"} />
                                 </div>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                   <Calendar className="size-3.5" />

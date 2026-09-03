@@ -97,6 +97,9 @@ export const createSerialNumber = (data) => req('/serial-numbers', { method: 'PO
 export const updateSerialNumber = (id, data) => req(`/serial-numbers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteSerialNumber = (id) => req(`/serial-numbers/${id}`, { method: 'DELETE' });
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+export const getDashboardKpis = () => req('/dashboard/kpis');
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Calculate line item totals with CGST/SGST or IGST split */

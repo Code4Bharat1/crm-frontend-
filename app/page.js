@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   UserPlus, Flame, FileText, ClipboardList, Truck,
@@ -13,6 +14,7 @@ import {
 
 import { ChainStrip, FilterBar, Kpi, PageHeader, Section, StatusBadge, Timeline } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
+import { getDashboardKpis } from "@/services/documentService";
 import {
   customerTimeline, customers, followUps, fmtDate, inrShort,
   invoices, kpis, leadsByArea, leadsBySource, monthlySales,
@@ -31,6 +33,14 @@ const tooltipStyle = {
 };
 
 export default function Dashboard() {
+  // Live KPI cards, computed from MongoDB. `followUps` has no backend collection
+  // yet, so that one card still reads from the sample dataset below.
+  const [dk, setDk] = useState(null);
+  useEffect(() => {
+    getDashboardKpis().then(setDk).catch((err) => console.error("Failed to load dashboard KPIs:", err));
+  }, []);
+  const loading = "…";
+
   const overdueInvoices = invoices.filter((i) => i.status === "Overdue").slice(0, 5);
   const dueFollowUps = followUps
     .filter((f) => f.status === "Pending")
@@ -62,18 +72,24 @@ export default function Dashboard() {
       <FilterBar items={["This month", "This quarter", "FY 2026-27", "All salespeople", "All areas"]} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Total Leads" value={kpis.totalLeads} sub={`${kpis.newLeads} new · ${kpis.potentialLeads} potential`} icon={UserPlus} />
-        <Kpi label="Hot Leads" value={kpis.hotLeads} sub={`${kpis.lostLeads} lost · ${kpis.wonLeads} won`} tone="danger" icon={Flame} />
-        <Kpi label="Open Quotations" value={kpis.openQuotations} sub={`Value ${inrShort(kpis.openQuotationValue)}`} tone="accent" icon={FileText} />
-        <Kpi label="Confirmed Sales Orders" value={kpis.confirmedOrders} sub={`Value ${inrShort(kpis.orderValue)}`} icon={ClipboardList} />
-        <Kpi label="Pending Deliveries" value={kpis.pendingDeliveries} sub="Partial or not dispatched" tone="warning" icon={Truck} />
-        <Kpi label="Outstanding Invoices" value={inrShort(kpis.outstanding)} sub={`Overdue ${inrShort(kpis.overdue)}`} tone="danger" icon={AlertTriangle} />
-        <Kpi label="Payments Received" value={inrShort(kpis.paymentsReceived)} sub="Last 90 days" tone="success" icon={IndianRupee} />
-        <Kpi label="Active Projects" value={kpis.activeProjects} sub={`Profit ${inrShort(kpis.projectProfit)}`} icon={FolderKanban} />
-        <Kpi label="Pending Follow-ups" value={kpis.pendingFollowUps} sub={`${kpis.overdueFollowUps} overdue`} tone="warning" icon={BellRing} />
-        <Kpi label="Open Service Requests" value={kpis.openService} sub={`Service revenue ${inrShort(kpis.serviceRevenue)}`} tone="accent" icon={Wrench} />
-        <Kpi label="Stock Alerts" value={kpis.stockAlerts} sub={`${TOTAL_PRODUCT_MASTER_COUNT} products in master`} tone="danger" icon={Boxes} />
-        <Kpi label="Project Profitability" value={`${((kpis.projectProfit / kpis.projectRevenue) * 100).toFixed(1)}%`} sub={`Revenue ${inrShort(kpis.projectRevenue)}`} tone="success" icon={TrendingUp} />
+        <Kpi label="Total Leads" value={dk ? dk.totalLeads : loading} sub={dk ? `${dk.newLeads} new · ${dk.potentialLeads} potential` : "Loading…"} icon={UserPlus} />
+        <Kpi label="Hot Leads" value={dk ? dk.hotLeads : loading} sub={dk ? `${dk.lostLeads} lost · ${dk.wonLeads} won` : "Loading…"} tone="danger" icon={Flame} />
+        <Kpi label="Open Quotations" value={dk ? dk.openQuotations : loading} sub={dk ? `Value ${inrShort(dk.openQuotationValue)}` : "Loading…"} tone="accent" icon={FileText} />
+        <Kpi label="Confirmed Sales Orders" value={dk ? dk.confirmedOrders : loading} sub={dk ? `Value ${inrShort(dk.orderValue)}` : "Loading…"} icon={ClipboardList} />
+        <Kpi label="Pending Deliveries" value={dk ? dk.pendingDeliveries : loading} sub="Partial or not dispatched" tone="warning" icon={Truck} />
+        <Kpi label="Outstanding Invoices" value={dk ? inrShort(dk.outstanding) : loading} sub={dk ? `Overdue ${inrShort(dk.overdue)}` : "Loading…"} tone="danger" icon={AlertTriangle} />
+        <Kpi label="Payments Received" value={dk ? inrShort(dk.paymentsReceived) : loading} sub="Last 90 days" tone="success" icon={IndianRupee} />
+        <Kpi label="Active Projects" value={dk ? dk.activeProjects : loading} sub={dk ? `Profit ${inrShort(dk.projectProfit)}` : "Loading…"} icon={FolderKanban} />
+        <Kpi label="Pending Follow-ups" value={kpis.pendingFollowUps} sub={`${kpis.overdueFollowUps} overdue · sample data`} tone="warning" icon={BellRing} />
+        <Kpi label="Open Service Requests" value={dk ? dk.openService : loading} sub={dk ? `Service revenue ${inrShort(dk.serviceRevenue)}` : "Loading…"} tone="accent" icon={Wrench} />
+        <Kpi label="Stock Alerts" value={dk ? dk.stockAlerts : loading} sub={`${TOTAL_PRODUCT_MASTER_COUNT} products in master`} tone="danger" icon={Boxes} />
+        <Kpi
+          label="Project Profitability"
+          value={dk ? `${(dk.projectRevenue ? (dk.projectProfit / dk.projectRevenue) * 100 : 0).toFixed(1)}%` : loading}
+          sub={dk ? `Revenue ${inrShort(dk.projectRevenue)}` : "Loading…"}
+          tone="success"
+          icon={TrendingUp}
+        />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
@@ -150,13 +166,13 @@ export default function Dashboard() {
           <div className="space-y-3">
             <ChainStrip
               steps={[
-                { label: "Lead", value: `${kpis.totalLeads}`, state: "done" },
-                { label: "Quotation", value: `${kpis.openQuotations}`, state: "done" },
+                { label: "Lead", value: dk ? `${dk.totalLeads}` : loading, state: "done" },
+                { label: "Quotation", value: dk ? `${dk.openQuotations}` : loading, state: "done" },
                 { label: "Proforma", value: "22", state: "done" },
-                { label: "Sales Order", value: `${kpis.confirmedOrders}`, state: "current" },
+                { label: "Sales Order", value: dk ? `${dk.confirmedOrders}` : loading, state: "current" },
                 { label: "Delivery", value: "16", state: "current" },
                 { label: "Invoice", value: "15", state: "current" },
-                { label: "Payment", value: inrShort(kpis.paymentsReceived), state: "pending" },
+                { label: "Payment", value: dk ? inrShort(dk.paymentsReceived) : loading, state: "pending" },
               ]}
             />
             <p className="text-xs text-muted-foreground">

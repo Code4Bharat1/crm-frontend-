@@ -200,17 +200,16 @@ function AppShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  
-  const currentUser = getUser();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    const u = getUser();
+    setUser(u);
 
-  useEffect(() => {
-    if (!currentUser) {
+    if (!u) {
       if (pathname !== '/login') {
-        router.push('/login');
+        router.replace('/login');
       }
     } else {
       const isFinancePath = pathname.startsWith('/ledger') || pathname.startsWith('/banking') || pathname.startsWith('/gst');
@@ -224,7 +223,7 @@ function AppShell({ children }) {
         router.push('/');
       }
     }
-  }, [currentUser, router, pathname]);
+  }, [pathname, router]);
 
   if (pathname === '/login') {
     return <>{children}</>;
@@ -236,9 +235,38 @@ function AppShell({ children }) {
     router.push('/login');
   };
 
-  if (!mounted) return null; // Wait for client hydration
+  if (!mounted) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <span className="text-xs text-gray-500 font-medium">Loading workspace...</span>
+        </div>
+      </div>
+    );
+  }
   
-  if (!currentUser) return null; // Avoid rendering before redirect
+  if (!user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4 text-center p-6 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-sm">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Redirecting to Login</h3>
+            <p className="text-xs text-gray-500 mt-1">Please sign in to access the CRM platform.</p>
+          </div>
+          <Link
+            href="/login"
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold shadow hover:bg-blue-700 transition-colors"
+          >
+            Go to Login Now →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const currentUser = user;
 
   const hits = globalSearch(q);
   const unread = notifications.filter((n) => !n.read).length;

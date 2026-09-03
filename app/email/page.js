@@ -28,20 +28,24 @@ export default function EmailPage() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const formatted = data.map(d => ({
-            id: d.uid || `email-${Math.random()}`,
-            channel: "Email",
-            subject: d.subject,
-            direction: d.direction || "Incoming",
-            preview: (d.text || "").substring(0, 150) + ((d.text || "").length > 150 ? "..." : ""),
-            fullText: d.text,
-            customerName: (d.from || "").split("<")[0].trim() || d.from,
-            contact: (d.from || "").match(/<([^>]+)>/)?.[1] || d.from,
-            date: new Date(d.date).toISOString(),
-            hasAttachment: false,
-            read: d.read || false,
-            followedUp: d.followedUp || false
-          }));
+          const formatted = data.map(d => {
+            const isOutgoing = d.direction === "Outgoing";
+            const party = isOutgoing && d.to ? d.to : d.from;
+            return {
+              id: d.uid || `email-${Math.random()}`,
+              channel: "Email",
+              subject: d.subject,
+              direction: d.direction || "Incoming",
+              preview: (d.text || "").substring(0, 150) + ((d.text || "").length > 150 ? "..." : ""),
+              fullText: d.text,
+              customerName: (party || "").split("<")[0].replace(/["']/g, '').trim() || party,
+              contact: (party || "").match(/<([^>]+)>/)?.[1] || party,
+              date: new Date(d.date).toISOString(),
+              hasAttachment: false,
+              read: d.read || false,
+              followedUp: d.followedUp || false
+            };
+          });
           setEmails(formatted);
         }
       })
@@ -63,9 +67,9 @@ export default function EmailPage() {
 
   const handleFetch = async () => {
     setLoading(true);
-    toast.info("Fetching latest email...");
+    toast.info("Syncing Gmail emails...");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/fetch-email`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/sync-gmail`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -74,30 +78,41 @@ export default function EmailPage() {
         return;
       }
 
-      const newEmails = (data.emails || []).map(d => ({
-        id: d.uid || `email-${Date.now()}-${Math.random()}`,
-        channel: "Email",
-        subject: d.subject,
-        direction: d.direction || "Incoming",
-        preview: (d.text || "").substring(0, 150) + ((d.text || "").length > 150 ? "..." : ""),
-        fullText: d.text,
-        customerName: (d.from || "").split("<")[0].trim() || d.from,
-        contact: (d.from || "").match(/<([^>]+)>/)?.[1] || d.from,
-        date: new Date(d.date).toISOString(),
-        hasAttachment: false,
-        read: false,
-        followedUp: d.followedUp || false
-      }));
+      const newEmails = (data.emails || []).map(d => {
+        const isOutgoing = d.direction === "Outgoing";
+        const party = isOutgoing && d.to ? d.to : d.from;
+        return {
+          id: d.uid || `email-${Date.now()}-${Math.random()}`,
+          channel: "Email",
+          subject: d.subject,
+          direction: d.direction || "Incoming",
+          preview: (d.text || "").substring(0, 150) + ((d.text || "").length > 150 ? "..." : ""),
+          fullText: d.text,
+          customerName: (party || "").split("<")[0].replace(/["']/g, '').trim() || party,
+          contact: (party || "").match(/<([^>]+)>/)?.[1] || party,
+          date: new Date(d.date).toISOString(),
+          hasAttachment: false,
+          read: false,
+          followedUp: d.followedUp || false
+        };
+      });
 
-      setEmails(prev => [...newEmails, ...prev]);
-      toast.success("Fetched latest email successfully");
+      setEmails(newEmails);
+      toast.success("Synced emails with Gmail");
 
-      // Show toast for every lead the backend auto-progressed to Potential
+      // Show toast for leads auto-progressed
       (data.progressions || []).forEach(p => {
-        toast.info(
-          `Lead for "${p.customerName}" moved to Potential`,
-          { description: "They replied again after being contacted." }
-        );
+        if (p.nextStage === 'Contacted') {
+          toast.success(
+            `Lead for "${p.customerName}" moved to Contacted`,
+            { description: "Reply detected from Gmail." }
+          );
+        } else if (p.nextStage === 'Potential') {
+          toast.info(
+            `Lead for "${p.customerName}" moved to Potential`,
+            { description: "Customer replied after being contacted." }
+          );
+        }
       });
 
     } catch (err) {

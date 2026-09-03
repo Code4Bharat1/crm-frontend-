@@ -181,10 +181,7 @@ export default function AiPage() {
         title="AI Lead & Message Processing"
         subtitle="Messages are fetched automatically from connected WhatsApp and email channels. The engine proposes a structured lead — you review, edit and confirm."
       />
-      <NotBuiltNotice>
-        AI provider is not connected. The extraction shown below is a deterministic sample of the output structure, not a live
-        model response.
-      </NotBuiltNotice>
+      
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Section title="Incoming message" description="Fetched automatically from WhatsApp & Email — no manual entry">

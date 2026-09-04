@@ -144,6 +144,37 @@ export default function Page() {
     }
   };
 
+  // Employee deletion state
+  const [isDeleteEmployeeModalOpen, setIsDeleteEmployeeModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
+  const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
+
+  const handleOpenDeleteEmployee = (emp) => {
+    setEmployeeToDelete(emp);
+    setIsDeleteEmployeeModalOpen(true);
+  };
+
+  const handleConfirmDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
+    setIsDeletingEmployee(true);
+    try {
+      const res = await deleteEmployee(employeeToDelete._id || employeeToDelete.id);
+      if (res && res.success) {
+        toast.success(res.message || `Employee "${employeeToDelete.fullName}" deleted successfully`);
+        setIsDeleteEmployeeModalOpen(false);
+        setIsEditEmployeeModalOpen(false);
+        setEmployeeToDelete(null);
+        fetchData();
+      } else {
+        toast.error(res?.message || "Failed to delete employee");
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to delete employee");
+    } finally {
+      setIsDeletingEmployee(false);
+    }
+  };
+
   // Quick Role creation form data
   const [roleFormData, setRoleFormData] = useState({
     name: "",
@@ -241,8 +272,8 @@ export default function Page() {
   // Create real employee
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
-    if (!employeeFormData.role) {
-      toast.error("Please select a role");
+    if (!employeeFormData.firstName?.trim() || !employeeFormData.lastName?.trim() || !employeeFormData.role || !employeeFormData.phone?.trim() || !employeeFormData.email?.trim()) {
+      toast.error("Please fill in all required fields (First name, Last name, Role, Phone, Email)");
       return;
     }
 
@@ -250,9 +281,11 @@ export default function Page() {
     try {
       const res = await createEmployee(employeeFormData);
       if (res && res.success) {
-        toast.success(res.message || `Employee created and email sent to ${employeeFormData.email}`);
+        toast.success(res.message || `Employee created and welcome email sent to ${employeeFormData.email}`);
         setIsEmployeeModalOpen(false);
         fetchData(); // Refresh real data
+      } else {
+        toast.error(res?.message || "Failed to create employee");
       }
     } catch (error) {
       toast.error(error.message || "Failed to create employee");
@@ -637,7 +670,7 @@ export default function Page() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="shrink-0 flex items-center">
+                                <div className="shrink-0 flex items-center gap-0.5">
                                   <Button
                                     size="icon"
                                     variant="ghost"
@@ -646,6 +679,15 @@ export default function Page() {
                                     title={`Edit ${emp.fullName}`}
                                   >
                                     <Edit2 className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => handleOpenDeleteEmployee(emp)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    title={`Delete ${emp.fullName}`}
+                                  >
+                                    <Trash2 className="size-3.5" />
                                   </Button>
                                 </div>
                               </div>
@@ -1017,30 +1059,104 @@ export default function Page() {
               </div>
             </div>
 
-            <DialogFooter className="pt-2">
+            <DialogFooter className="pt-2 flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => setIsEditEmployeeModalOpen(false)}
+                variant="destructive"
+                onClick={() => {
+                  const currentEmp = employees.find((e) => e._id === editingEmployeeId) || {
+                    _id: editingEmployeeId,
+                    fullName: `${editEmployeeFormData.firstName} ${editEmployeeFormData.lastName}`.trim(),
+                    employeeCode: editingEmployeeCode,
+                  };
+                  handleOpenDeleteEmployee(currentEmp);
+                }}
                 disabled={isSubmittingEditEmployee}
+                className="gap-1.5 w-full sm:w-auto text-xs h-9"
               >
-                Cancel
+                <Trash2 className="size-3.5" />
+                Delete Employee
               </Button>
-              <Button type="submit" disabled={isSubmittingEditEmployee} className="gap-1.5">
-                {isSubmittingEditEmployee ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Saving Changes...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-4" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditEmployeeModalOpen(false)}
+                  disabled={isSubmittingEditEmployee}
+                  className="text-xs h-9"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmittingEditEmployee} className="gap-1.5 text-xs h-9">
+                  {isSubmittingEditEmployee ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Saving Changes...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Employee Confirmation Dialog */}
+      <Dialog open={isDeleteEmployeeModalOpen} onOpenChange={setIsDeleteEmployeeModalOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="size-5" />
+              Delete Employee
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">
+                {employeeToDelete?.fullName}
+              </span>{" "}
+              ({employeeToDelete?.employeeCode || "Employee"})?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive space-y-1">
+            <p className="font-medium">⚠️ Warning: Deleting Employee Profile</p>
+            <p>This action will permanently delete this employee profile and remove their linked system login access.</p>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteEmployeeModalOpen(false)}
+              disabled={isDeletingEmployee}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDeleteEmployee}
+              disabled={isDeletingEmployee}
+              className="gap-1.5"
+            >
+              {isDeletingEmployee ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-4" />
+                  Confirm Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getProjects, createProject, fmtINR, fmtDate } from "@/services/projectService";
-import { getCustomers } from "@/services/documentService";
+import { getCustomers, getSalesOrders, getQuotations } from "@/services/documentService";
+import { getEmployees } from "@/services/employeeService";
 import { PageHeader, Kpi, StatusBadge } from "@/components/crm-ui";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -19,13 +20,18 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Briefcase
+  Briefcase,
+  Sparkles
 } from "lucide-react";
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [selectedSource, setSelectedSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -39,15 +45,24 @@ export default function ProjectsPage() {
     description: "",
     customerId: "",
     customerName: "",
-    manager: "Rohit Sharma",
+    manager: "",
+    soRef: "",
     status: "Planning",
     priority: "Medium",
     revenue: "",
     estimatedCost: "",
     start: new Date().toISOString().split("T")[0],
     end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-    progress: 0
+    progress: ""
   });
+
+  const isProjectManager = (emp) => {
+    if (!emp?.role) return false;
+    const r = emp.role.trim().toLowerCase().replace(/[-_]/g, " ");
+    return r.includes("project manager") || r === "pm";
+  };
+
+  const projectManagers = employees.filter(isProjectManager);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -57,13 +72,35 @@ export default function ProjectsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [projRes, custRes] = await Promise.all([
+      const [projRes, custRes, empRes, soRes, qtRes] = await Promise.all([
         getProjects({ status: statusFilter, search }),
-        getCustomers().catch(() => ({ customers: [] }))
+        getCustomers().catch(() => ({ customers: [] })),
+        getEmployees({ limit: 100 }).catch(() => ({ data: { employees: [] } })),
+        getSalesOrders().catch(() => []),
+        getQuotations().catch(() => [])
       ]);
       setProjects(projRes.projects || []);
       setKpis(projRes.kpis || null);
-      setCustomers(custRes.customers || custRes || []);
+      const rawCusts = custRes.customers || custRes || [];
+      setCustomers(rawCusts);
+
+      const rawEmps = empRes?.data?.employees || empRes?.employees || (Array.isArray(empRes) ? empRes : []);
+      setEmployees(rawEmps);
+
+      const rawOrders = Array.isArray(soRes) ? soRes : (soRes?.value || soRes?.orders || []);
+      setSalesOrders(rawOrders);
+
+      const rawQuotes = Array.isArray(qtRes) ? qtRes : (qtRes?.value || qtRes?.quotations || []);
+      setQuotations(rawQuotes);
+
+      // Auto-populate manager only if employee has Project Manager role
+      const pmEmps = rawEmps.filter(isProjectManager);
+      if (pmEmps.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          manager: prev.manager || pmEmps[0]?.fullName || ""
+        }));
+      }
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -75,6 +112,95 @@ export default function ProjectsPage() {
     loadData();
   }, [statusFilter]);
 
+  // Intelligent Auto-Fetch logic for projects
+  const getAutoFetchedProjectData = (custId, custList = customers, ordersList = salesOrders, quotesList = quotations) => {
+    const selectedCust = custList.find((c) => (c.id || c._id) === custId) || custList[0];
+    if (!selectedCust) return null;
+
+    const actualCustId = selectedCust.id || selectedCust._id;
+    const custName = selectedCust.name || "";
+
+    // 1. Check matching Sales Order
+    const matchedSO = ordersList.find(
+      (o) => (o.customer?.id === actualCustId || o.customer?.name?.toLowerCase() === custName.toLowerCase())
+    );
+
+    if (matchedSO) {
+      const itemTitle = matchedSO.items?.[0]?.description || matchedSO.items?.[0]?.productCode || "Automation Project";
+      const scope = matchedSO.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+      const rev = matchedSO.grandTotal || matchedSO.subtotal || 0;
+      return {
+        name: `${custName} - ${itemTitle}`,
+        customerId: actualCustId,
+        customerName: custName,
+        revenue: rev > 0 ? rev : "",
+        estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
+        description: scope ? `Scope under Sales Order ${matchedSO.soNo}: ${scope}. Turnkey delivery, site commissioning & handover.` : `Engineering project under ${matchedSO.soNo}.`,
+        soRef: matchedSO.soNo || "",
+        sourceKey: `SO:${matchedSO.soNo}`
+      };
+    }
+
+    // 2. Check matching Quotation
+    const matchedQT = quotesList.find(
+      (q) => (q.customer?.id === actualCustId || q.customer?.name?.toLowerCase() === custName.toLowerCase())
+    );
+
+    if (matchedQT) {
+      const qSubject = matchedQT.subject || matchedQT.items?.[0]?.description || "SCADA & PLC Automation";
+      const scope = matchedQT.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+      const rev = matchedQT.grandTotal || matchedQT.subtotal || 0;
+      return {
+        name: `${custName} - ${qSubject}`,
+        customerId: actualCustId,
+        customerName: custName,
+        revenue: rev > 0 ? rev : "",
+        estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
+        description: scope ? `Scope under Quotation ${matchedQT.quotationNo}: ${scope}. Engineering integration and verification.` : `Scope of work for ${qSubject}.`,
+        soRef: matchedQT.quotationNo || "",
+        sourceKey: `QT:${matchedQT.quotationNo}`
+      };
+    }
+
+    // 3. Structured fallback based on customer profile
+    const suggestedRev = selectedCust.totalRevenue > 0 ? selectedCust.totalRevenue : 1500000;
+    return {
+      name: `${custName} - SCADA & Automation Retrofit`,
+      customerId: actualCustId,
+      customerName: custName,
+      revenue: suggestedRev,
+      estimatedCost: Math.round(suggestedRev * 0.65),
+      description: `Complete engineering & automation project for ${custName}. Includes PLC logic programming, electrical control panel fabrication, SCADA HMI integration, field sensor wiring, and site commissioning.`,
+      soRef: "",
+      sourceKey: ""
+    };
+  };
+
+  const handleOpenCreateModal = () => {
+    const defaultManager = projectManagers[0]?.fullName || "";
+    const firstCust = customers[0];
+    const initialCustId = firstCust?.id || firstCust?._id || "";
+    const autoData = getAutoFetchedProjectData(initialCustId, customers, salesOrders, quotations) || {};
+
+    setForm({
+      name: autoData.name || (firstCust?.name ? `${firstCust.name} - Automation Project` : ""),
+      description: autoData.description || "Turnkey automation engineering, SCADA software deployment, and site testing.",
+      customerId: autoData.customerId || initialCustId,
+      customerName: autoData.customerName || firstCust?.name || "",
+      manager: defaultManager,
+      soRef: autoData.soRef || "",
+      status: "Planning",
+      priority: "Medium",
+      revenue: autoData.revenue !== undefined ? autoData.revenue : 1500000,
+      estimatedCost: autoData.estimatedCost !== undefined ? autoData.estimatedCost : 975000,
+      start: new Date().toISOString().split("T")[0],
+      end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
+      progress: ""
+    });
+    setSelectedSource(autoData.sourceKey || "");
+    setShowModal(true);
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     loadData();
@@ -83,11 +209,83 @@ export default function ProjectsPage() {
   const handleCustomerChange = (e) => {
     const custId = e.target.value;
     const selected = customers.find((c) => (c.id || c._id) === custId);
-    setForm((f) => ({
-      ...f,
-      customerId: custId,
-      customerName: selected ? selected.name : ""
-    }));
+    if (!selected) {
+      setForm((f) => ({ ...f, customerId: "", customerName: "" }));
+      return;
+    }
+
+    const autoData = getAutoFetchedProjectData(custId, customers, salesOrders, quotations);
+    if (autoData) {
+      setForm((f) => ({
+        ...f,
+        customerId: custId,
+        customerName: selected.name,
+        name: autoData.name || `${selected.name} - Automation Project`,
+        revenue: autoData.revenue || f.revenue,
+        estimatedCost: autoData.estimatedCost || f.estimatedCost,
+        description: autoData.description || f.description,
+        soRef: autoData.soRef || ""
+      }));
+      setSelectedSource(autoData.sourceKey || "");
+      showToast(`Auto-fetched project details for ${selected.name}`);
+    } else {
+      setForm((f) => ({
+        ...f,
+        customerId: custId,
+        customerName: selected.name,
+        name: `${selected.name} - Automation Project`
+      }));
+    }
+  };
+
+  const handleAutoFetchFromSource = (sourceKey) => {
+    setSelectedSource(sourceKey);
+    if (!sourceKey) return;
+
+    const [type, refNo] = sourceKey.split(":");
+    if (type === "SO") {
+      const so = salesOrders.find((o) => o.soNo === refNo);
+      if (so) {
+        const custId = so.customer?.id || "";
+        const custName = so.customer?.name || form.customerName;
+        const itemTitle = so.items?.[0]?.description || so.items?.[0]?.productCode || "Automation Project";
+        const scope = so.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+        const rev = so.grandTotal || so.subtotal || 0;
+
+        setForm((f) => ({
+          ...f,
+          name: `${custName} - ${itemTitle}`,
+          customerId: custId || f.customerId,
+          customerName: custName,
+          revenue: rev > 0 ? rev : f.revenue,
+          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : f.estimatedCost,
+          description: scope ? `Execution of Sales Order ${so.soNo}: ${scope}. Turnkey delivery and installation.` : f.description,
+          soRef: so.soNo
+        }));
+        showToast(`Auto-filled project from Sales Order ${so.soNo}`);
+      }
+    } else if (type === "QT") {
+      const qt = quotations.find((q) => q.quotationNo === refNo);
+      if (qt) {
+        const custId = qt.customer?.id || "";
+        const custName = qt.customer?.name || form.customerName;
+        const qTitle = qt.subject || qt.items?.[0]?.description || "Engineering Scope";
+        const scope = qt.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+        const rev = qt.grandTotal || qt.subtotal || 0;
+
+        setForm((f) => ({
+          ...f,
+          name: `${custName} - ${qTitle}`,
+          customerId: custId || f.customerId,
+          customerName: custName,
+          revenue: rev > 0 ? rev : f.revenue,
+          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : f.estimatedCost,
+          description: scope ? `Quotation ${qt.quotationNo} Scope: ${scope}. System testing and commissioning.` : f.description,
+          soRef: qt.quotationNo
+        }));
+        showToast(`Auto-filled project from Quotation ${qt.quotationNo}`);
+      }
+    }
   };
 
   const handleCreateProject = async (e) => {
@@ -105,6 +303,7 @@ export default function ProjectsPage() {
           name: form.customerName
         },
         manager: form.manager,
+        soRef: form.soRef || "",
         status: form.status,
         priority: form.priority,
         revenue: Number(form.revenue) || 0,
@@ -115,19 +314,22 @@ export default function ProjectsPage() {
       });
       showToast("Project created successfully!");
       setShowModal(false);
+      setSelectedSource("");
+      const defaultManager = projectManagers[0]?.fullName || "";
       setForm({
         name: "",
         description: "",
         customerId: "",
         customerName: "",
-        manager: "Rohit Sharma",
+        manager: defaultManager,
+        soRef: "",
         status: "Planning",
         priority: "Medium",
         revenue: "",
         estimatedCost: "",
         start: new Date().toISOString().split("T")[0],
         end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-        progress: 0
+        progress: ""
       });
       loadData();
     } catch (err) {
@@ -158,7 +360,7 @@ export default function ProjectsPage() {
           />
           <button
             type="button"
-            onClick={() => setShowModal(true)}
+            onClick={handleOpenCreateModal}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95 shrink-0 self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" /> Create Project
@@ -370,17 +572,77 @@ export default function ProjectsPage() {
             </div>
 
             <form onSubmit={handleCreateProject} className="space-y-4">
+              {/* Auto-Fetch Project Toolbar */}
+              <div className="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-blue-50/90 border border-blue-200/90 rounded-2xl shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                    <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
+                    <span>Auto-Fetch Project from Orders &amp; Quotations</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const autoData = getAutoFetchedProjectData(form.customerId);
+                      if (autoData) {
+                        setForm((f) => ({
+                          ...f,
+                          name: autoData.name || f.name,
+                          revenue: autoData.revenue || f.revenue,
+                          estimatedCost: autoData.estimatedCost || f.estimatedCost,
+                          description: autoData.description || f.description,
+                          soRef: autoData.soRef || f.soRef
+                        }));
+                        showToast("Auto-fetched project details!");
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-300 shadow-2xs transition-all flex items-center gap-1 active:scale-95"
+                  >
+                    ⚡ Auto-Fill Project
+                  </button>
+                </div>
+                {(salesOrders.length > 0 || quotations.length > 0) ? (
+                  <select
+                    value={selectedSource}
+                    onChange={(e) => handleAutoFetchFromSource(e.target.value)}
+                    className="w-full text-xs border border-blue-200 rounded-xl px-3 py-2 bg-white text-gray-800 font-medium focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs"
+                  >
+                    <option value="">-- Select Sales Order / Quotation to Auto-Fill Form --</option>
+                    {salesOrders.map((so) => (
+                      <option key={so._id || so.soNo} value={`SO:${so.soNo}`}>
+                        📋 Order: {so.soNo} — {so.customer?.name} (₹{Number(so.grandTotal || 0).toLocaleString("en-IN")})
+                      </option>
+                    ))}
+                    {quotations.map((q) => (
+                      <option key={q._id || q.quotationNo} value={`QT:${q.quotationNo}`}>
+                        📄 Quotation: {q.quotationNo} — {q.customer?.name} ({q.subject || "Project"}) (₹{Number(q.grandTotal || 0).toLocaleString("en-IN")})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-[11px] text-blue-700 flex items-center gap-1">
+                    <span>💡 Selecting a client will automatically fetch and structure their project title, budget &amp; scope.</span>
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Project Title <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Project Title <span className="text-red-500">*</span>
+                  </label>
+                  {form.soRef && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md border border-blue-200">
+                      Linked: {form.soRef}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Weighbridge SCADA Integration & PLC Retrofit"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none font-medium text-gray-900"
                 />
               </div>
 
@@ -419,12 +681,33 @@ export default function ProjectsPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Project Manager
                   </label>
-                  <input
-                    type="text"
-                    value={form.manager}
-                    onChange={(e) => setForm({ ...form, manager: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+                  {projectManagers.length > 0 ? (
+                    <select
+                      value={form.manager}
+                      onChange={(e) => setForm({ ...form, manager: e.target.value })}
+                      className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
+                    >
+                      <option value="">-- Select Project Manager --</option>
+                      {projectManagers.map((emp) => (
+                        <option key={emp._id || emp.employeeCode} value={emp.fullName}>
+                          {emp.fullName} {emp.role ? `(${emp.role})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="space-y-1">
+                      <input
+                        type="text"
+                        placeholder="e.g. Project Manager name"
+                        value={form.manager}
+                        onChange={(e) => setForm({ ...form, manager: e.target.value })}
+                        className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                      <p className="text-[11px] text-amber-600">
+                        No employees with &quot;Project Manager&quot; role found. You can type a name or assign this role in HR.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>

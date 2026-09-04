@@ -20,8 +20,11 @@ import {
   ExternalLink,
   Info,
   Save,
-  Link2
+  Link2,
+  CalendarDays
 } from "lucide-react";
+import { WeekendPolicyCard } from "@/components/WeekendPolicyCard";
+import { getUser } from "@/lib/authUtils";
 
 // ─── STABLE MODULE-LEVEL COMPONENTS (PREVENTS CURSOR LOSS) ────────────────────
 
@@ -486,6 +489,7 @@ export default function CompanySettingsPage() {
             { id: "branding", label: "Logo, Sign & Stamp", icon: ImageIcon, badge: (form.logoUrl && form.signatureUrl && form.stampUrl) ? "All Set" : null },
             { id: "banking", label: "Bank & Payments", icon: Landmark },
             { id: "terms", label: "Signatory & Terms", icon: FileText },
+            { id: "weekend", label: "Weekend Policy", icon: CalendarDays },
             { id: "preview", label: "Live Document Preview", icon: Eye, highlight: true }
           ].map((tab) => {
             const Icon = tab.icon;
@@ -839,6 +843,13 @@ export default function CompanySettingsPage() {
                 </FormField>
               </div>
             </FieldGroup>
+          </div>
+        )}
+
+        {/* ─── TAB: WEEKEND WORK & ATTENDANCE POLICY ───────────────────────── */}
+        {activeTab === "weekend" && (
+          <div className="space-y-6 max-w-4xl">
+            <WeekendPolicyCard currentUser={getUser()} />
           </div>
         )}
 

@@ -54,6 +54,8 @@ export const createProject = (data) => req('/projects', { method: 'POST', body: 
 export const updateProject = (id, data) => req(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteProject = (id) => req(`/projects/${id}`, { method: 'DELETE' });
 export const addProjectCost = (id, data) => req(`/projects/${id}/costs`, { method: 'POST', body: JSON.stringify(data) });
+export const updateProjectCost = (id, costId, data) => req(`/projects/${id}/costs/${costId}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteProjectCost = (id, costId) => req(`/projects/${id}/costs/${costId}`, { method: 'DELETE' });
 export const getProfitabilitySummary = () => req('/projects/profitability-summary');
 
 // ─── Service Requests API ────────────────────────────────────────────────────

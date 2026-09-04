@@ -158,6 +158,15 @@ const QUICK_ACTIONS = [
 ];
 
 const getFilteredNav = () => {
+  const user = getUser();
+  const role = (user?.role || '').toLowerCase().trim();
+  const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
+
+  // For Admin, show EVERYTHING in the sidebar
+  if (isSuperAdmin) {
+    return NAV;
+  }
+
   const isFinancial = hasPermission('financial');
   const isAdmin = hasPermission('admin');
   const isApprove = hasPermission('approve'); // Often used for HR and Admin
@@ -165,7 +174,14 @@ const getFilteredNav = () => {
   return NAV.map(group => {
     if (group.group === "Finance" && !isFinancial) return null;
     if (group.group === "Administration" && !isAdmin) return null;
-    if (group.group === "People" && !isAdmin && !isApprove) return null;
+    if (group.group === "People") {
+      if (isAdmin || isApprove) return group;
+      // Allow regular employees to access Attendance to punch in/out and view their records
+      return {
+        ...group,
+        items: group.items.filter(it => it.href === "/attendance")
+      };
+    }
     return group;
   }).filter(Boolean);
 };

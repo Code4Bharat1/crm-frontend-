@@ -35,3 +35,33 @@ export const getAttendanceSummary = async (params = {}) => {
 export const getAttendanceStats = async () => {
   return fetchApi('/attendance/stats');
 };
+
+export const punchIn = async (data = {}) => {
+  return fetchApi('/attendance/punch-in', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const punchOut = async (data = {}) => {
+  return fetchApi('/attendance/punch-out', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const getTodayStatus = async (employeeId = null) => {
+  const url = employeeId ? `/attendance/today?employeeId=${employeeId}` : '/attendance/today';
+  return fetchApi(url);
+};
+
+export const getWeekendPolicy = async () => {
+  return fetchApi('/attendance/weekend-policy');
+};
+
+export const updateWeekendPolicy = async (policy = {}) => {
+  return fetchApi('/attendance/weekend-policy', {
+    method: 'PUT',
+    body: JSON.stringify(policy),
+  });
+};

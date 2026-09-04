@@ -20,14 +20,14 @@ const emptyForm = {
   brand: "",
   hsnCode: "8537",
   unit: "Nos",
-  price: 0,
-  costPrice: 0,
+  price: "",
+  costPrice: "",
   gstRate: 18,
-  stock: 0,
-  minStock: 5,
+  stock: "",
+  minStock: "",
   location: "Main Warehouse - Bay 1",
   supplier: { id: "", name: "" },
-  warrantyMonths: 12,
+  warrantyMonths: "",
   serialTracked: false,
   status: "Active",
 };
@@ -42,7 +42,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [adjustModal, setAdjustModal] = useState(null);
-  const [adjustData, setAdjustData] = useState({ delta: 0, reason: "Manual Stock Adjustment" });
+  const [adjustData, setAdjustData] = useState({ delta: "", reason: "Manual Stock Adjustment" });
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = "success") => {
@@ -78,6 +78,11 @@ export default function ProductsPage() {
     setForm({
       ...emptyForm,
       ...p,
+      price: p.price !== undefined && p.price !== null ? p.price : "",
+      costPrice: p.costPrice !== undefined && p.costPrice !== null ? p.costPrice : "",
+      stock: p.stock !== undefined && p.stock !== null ? p.stock : "",
+      minStock: p.minStock !== undefined && p.minStock !== null ? p.minStock : "",
+      warrantyMonths: p.warrantyMonths !== undefined && p.warrantyMonths !== null ? p.warrantyMonths : "",
       supplier: {
         id: p.supplier?.id || "",
         name: p.supplier?.name || (typeof p.supplier === "string" ? p.supplier : ""),
@@ -475,6 +480,7 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     min="0"
+                    placeholder="0"
                     className="w-full border rounded-lg px-3 py-2 text-sm font-bold text-blue-600"
                     value={form.stock}
                     onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
@@ -486,6 +492,7 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     min="0"
+                    placeholder="5"
                     className="w-full border rounded-lg px-3 py-2 text-sm text-amber-700"
                     value={form.minStock}
                     onChange={e => setForm(f => ({ ...f, minStock: e.target.value }))}
@@ -496,6 +503,7 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     min="0"
+                    placeholder="12"
                     className="w-full border rounded-lg px-3 py-2 text-sm"
                     value={form.warrantyMonths}
                     onChange={e => setForm(f => ({ ...f, warrantyMonths: e.target.value }))}

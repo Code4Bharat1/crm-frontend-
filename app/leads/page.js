@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Flame, UserPlus, Calendar, RefreshCw, Mail, CheckCircle2, Send } from "lucide-react";
+import { Flame, UserPlus, Calendar, RefreshCw, Mail, CheckCircle2, Send, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { fetchApi } from "@/services/api";
 
@@ -18,9 +18,12 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
 
   // Email modal state
   const [selectedLead, setSelectedLead] = useState(null);
+  const [emailType, setEmailType] = useState("followup");
+  const [targetStage, setTargetStage] = useState("Contacted");
   const [emailForm, setEmailForm] = useState({ to: "", subject: "", message: "" });
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -69,7 +72,7 @@ export default function LeadsPage() {
     }
   }, [loadLeads]);
 
-  const openEmailModal = (lead) => {
+  const openEmailModal = (lead, defaultType = "followup") => {
     let recipientEmail = lead.customerEmail || "";
     if (!recipientEmail && lead.notes) {
       const match = lead.notes.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
@@ -77,28 +80,52 @@ export default function LeadsPage() {
     }
 
     setSelectedLead(lead);
-    setEmailForm({
-      to: recipientEmail,
-      subject: `Regarding Inquiry - ${lead.customerName}`,
-      message: `Hi ${lead.customerName},\n\nThank you for reaching out to us. Regarding your inquiry, we would be pleased to assist you with your requirements.\n\nPlease let us know if you have any questions or when would be a convenient time to discuss.\n\nBest regards,\nSales Team`
-    });
+    setEmailType(defaultType);
+
+    if (defaultType === "quotation") {
+      setTargetStage("Quotation Sent");
+      setEmailForm({
+        to: recipientEmail,
+        subject: `Quotation details for ${lead.customerName}`,
+        message: `Hi ${lead.customerName},\n\nWe have reviewed your requirements and our team has prepared the quotation for you.\n\nPlease feel free to reach out if you have any questions regarding the pricing or technical scope.\n\nBest regards,\nSales Team`
+      });
+    } else if (defaultType === "meeting") {
+      setTargetStage("Potential");
+      setEmailForm({
+        to: recipientEmail,
+        subject: `Meeting Request: Discussion with ${lead.customerName}`,
+        message: `Hi ${lead.customerName},\n\nWe would love to schedule a brief 15-minute call to understand your timeline and project specifications better.\n\nWould tomorrow morning or afternoon work for you?\n\nBest regards,\nSales Team`
+      });
+    } else {
+      setTargetStage("Contacted");
+      setEmailForm({
+        to: recipientEmail,
+        subject: `Regarding Inquiry - ${lead.customerName}`,
+        message: `Hi ${lead.customerName},\n\nThank you for reaching out to us. Regarding your inquiry, we would be pleased to assist you with your requirements.\n\nPlease let us know if you have any questions or when would be a convenient time to discuss.\n\nBest regards,\nSales Team`
+      });
+    }
   };
 
   const applyTemplate = (type) => {
     if (!selectedLead) return;
+    setEmailType(type);
+
     if (type === "followup") {
+      setTargetStage("Contacted");
       setEmailForm(f => ({
         ...f,
         subject: `Following up: ${selectedLead.customerName} - Inquiry`,
         message: `Hi ${selectedLead.customerName},\n\nJust following up on your inquiry. Please let us know if you need any additional specifications, pricing, or product demonstrations.\n\nLooking forward to hearing from you.\n\nBest regards,\nSales Team`
       }));
     } else if (type === "quotation") {
+      setTargetStage("Quotation Sent");
       setEmailForm(f => ({
         ...f,
         subject: `Quotation details for ${selectedLead.customerName}`,
         message: `Hi ${selectedLead.customerName},\n\nWe have reviewed your requirements and our team has prepared the quotation for you.\n\nPlease feel free to reach out if you have any questions regarding the pricing or technical scope.\n\nBest regards,\nSales Team`
       }));
     } else if (type === "meeting") {
+      setTargetStage("Potential");
       setEmailForm(f => ({
         ...f,
         subject: `Meeting Request: Discussion with ${selectedLead.customerName}`,
@@ -122,17 +149,22 @@ export default function LeadsPage() {
           to: emailForm.to,
           subject: emailForm.subject,
           message: emailForm.message,
-          leadId: selectedLead?.id
+          leadId: selectedLead?.id,
+          emailType,
+          targetStage
         })
       });
 
       const data = await res.json();
       if (res.ok) {
+        const destinationStage = targetStage || data.stage || "Contacted";
         toast.success(`Email sent to ${emailForm.to}!`, {
-          description: "Lead automatically moved to Contacted section."
+          description: `Lead moved to "${destinationStage}" section.`
         });
         setSelectedLead(null);
         await loadLeads();
+        // Immediately switch to the destination stage tab so the user sees the lead in that section
+        setActiveTab(destinationStage);
       } else {
         toast.error(data.message || "Failed to send email");
       }
@@ -141,6 +173,27 @@ export default function LeadsPage() {
       toast.error("Error sending email through server");
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleUpdateStage = async (leadId, newStage, customerName = "Lead") => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads/${leadId}/stage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage: newStage })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Lead "${customerName}" moved to "${newStage}"!`);
+        await loadLeads();
+        setActiveTab(newStage);
+      } else {
+        toast.error(data.message || "Failed to update stage");
+      }
+    } catch (err) {
+      console.error("Error updating stage:", err);
+      toast.error("Could not update lead stage");
     }
   };
 
@@ -191,7 +244,7 @@ export default function LeadsPage() {
         <Kpi label="Won" value={leads.filter(l => l.stage === 'Won').length} tone="success" />
       </div>
 
-      <Tabs defaultValue="all" className="mt-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <div className="overflow-x-auto pb-2">
           <TabsList>
             <TabsTrigger value="all">All Leads ({leads.length})</TabsTrigger>
@@ -222,7 +275,12 @@ export default function LeadsPage() {
                   <p className="text-sm text-muted-foreground">No leads found in the "{tab}" stage.</p>
                   {tab === "Contacted" && (
                     <p className="mt-1 text-xs text-muted-foreground/80">
-                      When you reply to a customer from Gmail, their lead will automatically show up here.
+                      When you reply to a customer from Gmail or send a follow-up, their lead will automatically show up here.
+                    </p>
+                  )}
+                  {tab === "Quotation Sent" && (
+                    <p className="mt-1 text-xs text-muted-foreground/80">
+                      When you send a Quotation to a lead, it will automatically show up here.
                     </p>
                   )}
                 </div>
@@ -286,14 +344,39 @@ export default function LeadsPage() {
                             </td>
                             <td className="p-4 align-top text-right">
                               <div className="flex flex-col items-end gap-2.5">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                  {/* Quick Stage / Section selector */}
+                                  <select
+                                    value={l.stage}
+                                    onChange={(e) => handleUpdateStage(l.id, e.target.value, l.customerName)}
+                                    className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                                    title="Move directly to another section"
+                                  >
+                                    {LEAD_STAGES.map((s) => (
+                                      <option key={s} value={s}>
+                                        {s}
+                                      </option>
+                                    ))}
+                                  </select>
+
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="gap-1.5 h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary"
-                                    onClick={() => openEmailModal(l)}
+                                    className="gap-1 h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary"
+                                    onClick={() => openEmailModal(l, "followup")}
+                                    title="Send Follow-up (advances to Contacted)"
                                   >
-                                    <Send className="size-3" /> Send Email
+                                    <Send className="size-3" /> Follow-up
+                                  </Button>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1 h-7 text-xs font-semibold text-blue-600 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500"
+                                    onClick={() => openEmailModal(l, "quotation")}
+                                    title="Send Quotation (advances to Quotation Sent)"
+                                  >
+                                    <FileText className="size-3" /> Quotation
                                   </Button>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -326,14 +409,78 @@ export default function LeadsPage() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base font-bold">
-                <Mail className="size-5 text-primary" /> Send Email to {selectedLead.customerName}
+                <Mail className="size-5 text-primary" /> Send Email to "{selectedLead.customerName}"
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Send an email directly through your connected Gmail. This lead will automatically advance to the <strong>Contacted</strong> stage.
+                Send an email directly through your connected Gmail. This lead will automatically advance to the{" "}
+                <span className="font-bold text-primary underline underline-offset-2">{targetStage}</span> section.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 py-2 text-sm">
+              {/* Type / Destination Section Pill Buttons */}
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
+                  Select Email Type & Destination Section:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("followup")}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
+                      emailType === "followup"
+                        ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
+                        : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>Follow-up</span>
+                    <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Contacted</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("quotation")}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
+                      emailType === "quotation"
+                        ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
+                        : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>Quotation</span>
+                    <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Quotation Sent</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("meeting")}
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
+                      emailType === "meeting"
+                        ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
+                        : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>Meeting</span>
+                    <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Potential</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Destination Section selector dropdown */}
+              <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 border border-border/50 text-xs">
+                <span className="text-muted-foreground font-medium">Destination Section:</span>
+                <select
+                  value={targetStage}
+                  onChange={(e) => setTargetStage(e.target.value)}
+                  className="rounded border border-border bg-background px-2 py-1 text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  {LEAD_STAGES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Recipient (To)</label>
                 <Input
@@ -361,7 +508,7 @@ export default function LeadsPage() {
                     <span className="text-muted-foreground">Templates:</span>
                     <button
                       type="button"
-                      className="text-primary hover:underline font-semibold"
+                      className={`font-semibold hover:underline ${emailType === "followup" ? "text-primary underline" : "text-muted-foreground"}`}
                       onClick={() => applyTemplate("followup")}
                     >
                       Follow-up
@@ -369,7 +516,7 @@ export default function LeadsPage() {
                     <span className="text-muted-foreground">·</span>
                     <button
                       type="button"
-                      className="text-primary hover:underline font-semibold"
+                      className={`font-semibold hover:underline ${emailType === "quotation" ? "text-primary underline" : "text-muted-foreground"}`}
                       onClick={() => applyTemplate("quotation")}
                     >
                       Quotation
@@ -377,7 +524,7 @@ export default function LeadsPage() {
                     <span className="text-muted-foreground">·</span>
                     <button
                       type="button"
-                      className="text-primary hover:underline font-semibold"
+                      className={`font-semibold hover:underline ${emailType === "meeting" ? "text-primary underline" : "text-muted-foreground"}`}
                       onClick={() => applyTemplate("meeting")}
                     >
                       Meeting

@@ -37,9 +37,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { employees } from "@/lib/crm-data";
 import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
-import { createEmployee } from "@/services/employeeService";
+import { getEmployees, createEmployee } from "@/services/employeeService";
 
 // Complete list of all sidebar modules grouped exactly as in the application sidebar
 export const SIDEBAR_MODULES = [
@@ -142,6 +141,7 @@ export const isRoleMatch = (a, b) => {
 export default function Page() {
   // Roles list - blank by default
   const [roles, setRoles] = useState([]);
+  const [userCount, setUserCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Selected category filter tab for table view
@@ -181,7 +181,7 @@ export default function Page() {
     setEmployeeFormData({
       firstName: "",
       lastName: "",
-      role: preselectedRole || (roles[0]?.name || ""),
+      role: preselectedRole || "",
       phone: "",
       email: "",
       employmentType: "Full Time",
@@ -202,6 +202,7 @@ export default function Page() {
       if (res && res.success) {
         toast.success(res.message || `Employee created and welcome email sent to ${employeeFormData.email}`);
         setIsEmployeeModalOpen(false);
+        fetchRolesData();
       }
     } catch (error) {
       toast.error(error.message || "Failed to create employee");
@@ -213,11 +214,17 @@ export default function Page() {
   const fetchRolesData = async () => {
     try {
       setLoading(true);
-      const res = await getRoles();
+      const [res, empRes] = await Promise.all([
+        getRoles(),
+        getEmployees({ limit: 100 }).catch(() => null),
+      ]);
       if (res && res.success && Array.isArray(res.data)) {
         setRoles(res.data);
       } else {
         setRoles([]);
+      }
+      if (empRes && empRes.success) {
+        setUserCount(empRes.data?.total || empRes.data?.employees?.length || 0);
       }
     } catch (error) {
       console.warn("API request failed, keeping table blank:", error);
@@ -443,7 +450,7 @@ export default function Page() {
 
       {/* KPI Cards */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Kpi label="Users" value={employees.length} />
+        <Kpi label="Users" value={userCount} sub="Real active accounts" />
         <Kpi label="Roles" value={rolesCount} sub="Table blank by default" />
         <Kpi
           label="Finance & Admin Access"

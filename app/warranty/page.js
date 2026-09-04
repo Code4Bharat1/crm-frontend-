@@ -10,7 +10,12 @@ import {
   fmtINR,
   fmtDate
 } from "@/services/projectService";
-import { getCustomers } from "@/services/documentService";
+import {
+  getCustomers,
+  getInvoices,
+  getProducts,
+  getSerialNumbers
+} from "@/services/documentService";
 import { PageHeader, Kpi, StatusBadge } from "@/components/crm-ui";
 import {
   ShieldCheck,
@@ -32,10 +37,18 @@ export default function WarrantyPage() {
   const [warranties, setWarranties] = useState([]);
   const [kpis, setKpis] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [serialNumbers, setSerialNumbers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
+
+  // Manual fallback toggles for Register Warranty Modal dropdowns
+  const [customSerialMode, setCustomSerialMode] = useState(false);
+  const [customProductMode, setCustomProductMode] = useState(false);
+  const [customInvoiceMode, setCustomInvoiceMode] = useState(false);
 
   // Serial Quick Check Tool
   const [checkSerialInput, setCheckSerialInput] = useState("");
@@ -72,19 +85,32 @@ export default function WarrantyPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const openCreateModal = () => {
+    setCustomSerialMode(false);
+    setCustomProductMode(false);
+    setCustomInvoiceMode(false);
+    setShowCreateModal(true);
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
       const isAmcParam = statusFilter === "AMC" ? "true" : "All";
       const statusParam = statusFilter === "AMC" ? "All" : statusFilter;
 
-      const [warRes, custRes] = await Promise.all([
+      const [warRes, custRes, invRes, prodRes, snRes] = await Promise.all([
         getWarranties({ status: statusParam, isAmc: isAmcParam, search }),
-        getCustomers().catch(() => ({ customers: [] }))
+        getCustomers().catch(() => ({ customers: [] })),
+        getInvoices().catch(() => []),
+        getProducts().catch(() => []),
+        getSerialNumbers().catch(() => [])
       ]);
       setWarranties(warRes.warranties || []);
       setKpis(warRes.kpis || null);
-      setCustomers(custRes.customers || custRes || []);
+      setCustomers(custRes.customers || (Array.isArray(custRes) ? custRes : []));
+      setInvoices(Array.isArray(invRes) ? invRes : invRes?.invoices || []);
+      setProducts(Array.isArray(prodRes) ? prodRes : prodRes?.products || []);
+      setSerialNumbers(Array.isArray(snRes) ? snRes : snRes?.serialNumbers || []);
     } catch (err) {
       showToast(err.message, "error");
     } finally {
@@ -126,6 +152,159 @@ export default function WarrantyPage() {
     }));
   };
 
+  // Selected invoice object and items
+  const currentInvoice = React.useMemo(() => {
+    return invoices.find((inv) => inv.invoiceNo === form.invoiceRef);
+  }, [invoices, form.invoiceRef]);
+
+  const currentInvoiceItems = React.useMemo(() => {
+    return currentInvoice?.items || [];
+  }, [currentInvoice]);
+
+  // Handle Invoice Selection from Dropdown
+  const handleInvoiceSelect = (invNo) => {
+    if (invNo === "__custom__") {
+      setCustomInvoiceMode(true);
+      return;
+    }
+    if (!invNo) {
+      setForm((f) => ({ ...f, invoiceRef: "" }));
+      return;
+    }
+
+    const selectedInv = invoices.find((inv) => inv.invoiceNo === invNo);
+    if (!selectedInv) {
+      setForm((f) => ({ ...f, invoiceRef: invNo }));
+      return;
+    }
+
+    const invCustId = selectedInv.customer?.id || selectedInv.customer?._id || "";
+    const invCustName = selectedInv.customer?.name || "";
+    const invDate = selectedInv.date ? new Date(selectedInv.date).toISOString().split("T")[0] : undefined;
+
+    setForm((f) => ({
+      ...f,
+      invoiceRef: selectedInv.invoiceNo,
+      ...(invCustId ? { customerId: invCustId } : {}),
+      ...(invCustName ? { customerName: invCustName } : {}),
+      ...(invDate ? { startDate: invDate } : {})
+    }));
+  };
+
+  // Handle Product Selection from Dropdown
+  const handleProductSelect = (val) => {
+    if (val === "__custom__") {
+      setCustomProductMode(true);
+      return;
+    }
+    if (!val) {
+      setForm((f) => ({ ...f, productName: "", productCode: "" }));
+      return;
+    }
+
+    // Check if it's from invoice items
+    const fromInv = currentInvoiceItems.find(
+      (it) => (it.description || it.name) === val || it.productCode === val
+    );
+    if (fromInv) {
+      setForm((f) => ({
+        ...f,
+        productName: fromInv.description || fromInv.name,
+        productCode: fromInv.productCode || ""
+      }));
+      return;
+    }
+
+    // Check if it's from catalog products
+    const fromCatalog = products.find(
+      (p) => p.name === val || p.itemCode === val || (p._id && p._id === val)
+    );
+    if (fromCatalog) {
+      setForm((f) => ({
+        ...f,
+        productName: fromCatalog.name,
+        productCode: fromCatalog.itemCode || ""
+      }));
+      return;
+    }
+
+    setForm((f) => ({ ...f, productName: val }));
+  };
+
+  // Dynamically filter serial numbers based on selected product and/or invoice
+  const { matchingSerials, otherSerials } = React.useMemo(() => {
+    if (!serialNumbers || serialNumbers.length === 0) {
+      return { matchingSerials: [], otherSerials: [] };
+    }
+
+    const pName = (form.productName || "").trim().toLowerCase();
+    const pCode = (form.productCode || "").trim().toLowerCase();
+    const invRef = (form.invoiceRef || "").trim().toLowerCase();
+
+    if (!pName && !pCode && !invRef) {
+      return { matchingSerials: [], otherSerials: serialNumbers };
+    }
+
+    const matches = [];
+    const others = [];
+
+    serialNumbers.forEach((s) => {
+      const sProdName = (s.product?.name || "").trim().toLowerCase();
+      const sProdCode = (s.product?.itemCode || "").trim().toLowerCase();
+      const sInvRef = (s.invoiceRef || "").trim().toLowerCase();
+
+      const matchesProd =
+        (pName && (sProdName === pName || sProdName.includes(pName) || pName.includes(sProdName))) ||
+        (pCode && (sProdCode === pCode || sProdCode.includes(pCode) || pCode.includes(sProdCode)));
+
+      const matchesInv = invRef && sInvRef && sInvRef === invRef;
+
+      if (matchesProd || matchesInv) {
+        matches.push(s);
+      } else {
+        others.push(s);
+      }
+    });
+
+    return { matchingSerials: matches, otherSerials: others };
+  }, [serialNumbers, form.productName, form.productCode, form.invoiceRef]);
+
+  // Handle Serial Number Selection from Dropdown
+  const handleSerialSelect = (serialVal) => {
+    if (serialVal === "__custom__") {
+      setCustomSerialMode(true);
+      return;
+    }
+    if (!serialVal) {
+      setForm((f) => ({ ...f, serialNo: "" }));
+      return;
+    }
+
+    const selectedSn = serialNumbers.find((s) => s.serialNo === serialVal);
+    if (!selectedSn) {
+      setForm((f) => ({ ...f, serialNo: serialVal }));
+      return;
+    }
+
+    // Auto-populate associated product, customer, or invoice if not already chosen
+    setForm((f) => {
+      const updates = { serialNo: selectedSn.serialNo };
+
+      if (!f.productName && selectedSn.product?.name) {
+        updates.productName = selectedSn.product.name;
+        updates.productCode = selectedSn.product.itemCode || "";
+      }
+      if (!f.customerName && selectedSn.customer?.name) {
+        updates.customerName = selectedSn.customer.name;
+        if (selectedSn.customer.id) updates.customerId = selectedSn.customer.id;
+      }
+      if (!f.invoiceRef && selectedSn.invoiceRef) {
+        updates.invoiceRef = selectedSn.invoiceRef;
+      }
+      return { ...f, ...updates };
+    });
+  };
+
   const handleRegisterWarranty = async (e) => {
     e.preventDefault();
     if (!form.serialNo.trim()) return showToast("Serial number is required", "error");
@@ -152,6 +331,9 @@ export default function WarrantyPage() {
       });
       showToast("Warranty registered successfully!");
       setShowCreateModal(false);
+      setCustomSerialMode(false);
+      setCustomProductMode(false);
+      setCustomInvoiceMode(false);
       setForm({
         serialNo: "",
         productName: "",
@@ -215,7 +397,7 @@ export default function WarrantyPage() {
           />
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreateModal}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95 shrink-0 self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" /> Register Warranty
@@ -505,30 +687,47 @@ export default function WarrantyPage() {
 
             <form onSubmit={handleRegisterWarranty} className="space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 1. INVOICE / PO REFERENCE DROPDOWN */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Serial Number *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. SN-2026-0099"
-                    value={form.serialNo}
-                    onChange={(e) => setForm({ ...form, serialNo: e.target.value })}
-                    className="w-full text-xs font-mono border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Invoice / PO Reference</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomInvoiceMode(!customInvoiceMode);
+                        if (!customInvoiceMode) setForm((f) => ({ ...f, invoiceRef: "" }));
+                      }}
+                      className="text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {customInvoiceMode ? "← Select from Invoices" : "+ Custom Invoice"}
+                    </button>
+                  </div>
+                  {customInvoiceMode ? (
+                    <input
+                      type="text"
+                      placeholder="e.g. INV-2026-0042"
+                      value={form.invoiceRef}
+                      onChange={(e) => setForm({ ...form, invoiceRef: e.target.value })}
+                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={form.invoiceRef}
+                      onChange={(e) => handleInvoiceSelect(e.target.value)}
+                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white text-gray-800 font-medium"
+                    >
+                      <option value="">-- Select Sales Invoice (Optional) --</option>
+                      {invoices.map((inv) => (
+                        <option key={inv._id || inv.invoiceNo} value={inv.invoiceNo}>
+                          {inv.invoiceNo} — {inv.customer?.name || "Customer"} {inv.date ? `(${new Date(inv.date).toLocaleDateString("en-IN")})` : ""}
+                        </option>
+                      ))}
+                      <option value="__custom__">+ Enter Custom / External Invoice...</option>
+                    </select>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Product Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Danfoss VFD FC-302 15kW"
-                    value={form.productName}
-                    onChange={(e) => setForm({ ...form, productName: e.target.value })}
-                    className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
+                {/* 2. CUSTOMER / CLIENT DROPDOWN */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Customer / Client *</label>
                   {customers.length > 0 ? (
@@ -536,7 +735,7 @@ export default function WarrantyPage() {
                       value={form.customerId}
                       onChange={handleCustomerChange}
                       required
-                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white text-gray-800 font-medium"
                     >
                       <option value="">-- Select Customer --</option>
                       {customers.map((c) => (
@@ -557,17 +756,120 @@ export default function WarrantyPage() {
                   )}
                 </div>
 
+                {/* 3. PRODUCT NAME DROPDOWN */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Invoice / PO Reference</label>
-                  <input
-                    type="text"
-                    placeholder="INV-2026-0042"
-                    value={form.invoiceRef}
-                    onChange={(e) => setForm({ ...form, invoiceRef: e.target.value })}
-                    className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Product Name *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomProductMode(!customProductMode);
+                        if (!customProductMode) setForm((f) => ({ ...f, productName: "", productCode: "" }));
+                      }}
+                      className="text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {customProductMode ? "← Select from Catalog" : "+ Custom Product"}
+                    </button>
+                  </div>
+                  {customProductMode ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Danfoss VFD FC-302 15kW"
+                      value={form.productName}
+                      onChange={(e) => setForm({ ...form, productName: e.target.value })}
+                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={form.productName}
+                      onChange={(e) => handleProductSelect(e.target.value)}
+                      required
+                      className="w-full text-xs border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white text-gray-800 font-medium"
+                    >
+                      <option value="">-- Select Product --</option>
+                      {currentInvoiceItems.length > 0 && (
+                        <optgroup label={`📦 Billed on Invoice (${form.invoiceRef})`}>
+                          {currentInvoiceItems.map((it, idx) => {
+                            const itName = it.description || it.name;
+                            return (
+                              <option key={`inv-item-${idx}`} value={itName}>
+                                {itName} {it.productCode ? `(${it.productCode})` : ""}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+                      <optgroup label={`🏭 Product Catalog (${products.length})`}>
+                        {products.map((p) => (
+                          <option key={p._id || p.itemCode} value={p.name}>
+                            {p.name} {p.itemCode ? `(${p.itemCode})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="__custom__">+ Enter Custom Product Name...</option>
+                    </select>
+                  )}
                 </div>
 
+                {/* 4. SERIAL NUMBER DROPDOWN */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Serial Number *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomSerialMode(!customSerialMode);
+                        if (!customSerialMode) setForm((f) => ({ ...f, serialNo: "" }));
+                      }}
+                      className="text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      {customSerialMode ? "← Select from List" : "+ Custom Serial No"}
+                    </button>
+                  </div>
+                  {customSerialMode ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. SN-2026-0099"
+                      value={form.serialNo}
+                      onChange={(e) => setForm({ ...form, serialNo: e.target.value })}
+                      className="w-full text-xs font-mono border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={form.serialNo}
+                      onChange={(e) => handleSerialSelect(e.target.value)}
+                      required
+                      className="w-full text-xs font-mono border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white text-gray-800 font-semibold"
+                    >
+                      <option value="">-- Select Serial Number --</option>
+                      {matchingSerials.length > 0 && (
+                        <optgroup label={`🔍 Matching Equipment (${matchingSerials.length})`}>
+                          {matchingSerials.map((s) => (
+                            <option key={s._id || s.serialNo} value={s.serialNo}>
+                              {s.serialNo} — {s.status || "In Stock"} {s.customer?.name ? `(${s.customer.name})` : ""}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {otherSerials.length > 0 && (
+                        <optgroup
+                          label={`📋 ${matchingSerials.length > 0 ? "Other Serial Numbers" : "All Registered Serials"} (${otherSerials.length})`}
+                        >
+                          {otherSerials.map((s) => (
+                            <option key={s._id || s.serialNo} value={s.serialNo}>
+                              {s.serialNo} — {s.product?.name || "Equipment"} ({s.status || "Active"})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <option value="__custom__">+ Enter Custom Serial Number...</option>
+                    </select>
+                  )}
+                </div>
+
+                {/* 5. START DATE */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
                   <input
@@ -578,6 +880,7 @@ export default function WarrantyPage() {
                   />
                 </div>
 
+                {/* 6. DURATION (MONTHS) */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Duration (Months)</label>
                   <select
@@ -592,6 +895,7 @@ export default function WarrantyPage() {
                   </select>
                 </div>
 
+                {/* 7. COVERAGE SCOPE */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Coverage Scope</label>
                   <select

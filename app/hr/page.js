@@ -45,6 +45,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getUser } from "@/lib/authUtils";
+import { WeekendPolicyCard } from "@/components/WeekendPolicyCard";
 
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from "@/services/employeeService";
 import { getRoles, createRole, deleteRole } from "@/services/roleService";
@@ -111,7 +113,7 @@ export default function Page() {
     setEditEmployeeFormData({
       firstName: emp.firstName || "",
       lastName: emp.lastName || "",
-      role: emp.role || (rolesData[0]?.name || ""),
+      role: emp.role || "",
       phone: emp.phone || "",
       email: emp.email || "",
       employmentType: emp.employmentType || "Full Time",
@@ -181,6 +183,8 @@ export default function Page() {
     description: "",
   });
 
+  const [currentUser, setCurrentUser] = useState(null);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -203,14 +207,18 @@ export default function Page() {
   };
 
   useEffect(() => {
+    setCurrentUser(getUser());
     fetchData();
   }, []);
 
   // Compute aggregated real data ONLY for roles explicitly created in database
   const rolesData = useMemo(() => {
     return roles.map((r) => {
+      // Do not add default/dummy employees; only real employees explicitly assigned this exact role (case-insensitive)
       const assignedEmployees = employees.filter((emp) =>
-        isRoleMatch(emp.role, r.name)
+        emp.role &&
+        emp.role.trim().toLowerCase() === r.name.trim().toLowerCase() &&
+        !emp.email?.includes('@example.com')
       );
 
       return {
@@ -255,12 +263,12 @@ export default function Page() {
     });
   };
 
-  // Open employee modal prefilled with role
+  // Open employee modal - do NOT default to any role unless explicitly specified
   const handleOpenAssignEmployee = (roleName = "") => {
     setEmployeeFormData({
       firstName: "",
       lastName: "",
-      role: roleName || (rolesData[0]?.name || ""),
+      role: roleName || "",
       phone: "",
       email: "",
       employmentType: "Full Time",
@@ -410,6 +418,11 @@ export default function Page() {
           value={staffedRolesCount}
           sub="Roles with assigned members"
         />
+      </div>
+
+      {/* ─── WEEKEND WORKING POLICY (ADMIN, HR & MANAGER ACCESS ONLY) ─── */}
+      <div className="mt-5">
+        <WeekendPolicyCard currentUser={currentUser} />
       </div>
 
       {/* Main Roles & Designations Content */}

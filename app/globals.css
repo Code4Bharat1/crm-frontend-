@@ -120,3 +120,30 @@
     background: linear-gradient(90deg, oklch(var(--primary-dark)), oklch(var(--primary)));
   }
 }
+
+@layer utilities {
+  /* Suppress default scrollbar appearance while preserving smooth scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+    width: 0px;
+    height: 0px;
+  }
+}
+
+/* Global sidebar scrollbar elimination (keeps mousewheel/touchpad scrolling active) */
+aside nav,
+[data-sidebar] nav {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+aside nav::-webkit-scrollbar,
+[data-sidebar] nav::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+}
+

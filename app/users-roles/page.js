@@ -312,10 +312,13 @@ export default function Page() {
     return group ? group.items.map((i) => ({ ...i, group: group.group })) : [];
   }, [activeCategory]);
 
-  // Total permissions granted for a role
+  // Total permissions granted for a role, counted against the current 34
+  // sidebar modules only -- role.permissions can still carry leftover keys
+  // from modules that used to exist (e.g. "visits", "communications") which
+  // would otherwise inflate this count past what the editor itself shows.
   const getGrantedCount = (role) => {
     if (!role.permissions) return 0;
-    return Object.values(role.permissions).filter(Boolean).length;
+    return ALL_SIDEBAR_ITEMS.filter((item) => Boolean(role.permissions[item.key])).length;
   };
 
   // KPI Calculations

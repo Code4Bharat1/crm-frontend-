@@ -13,6 +13,7 @@ import {
   fmtINR,
   fmtDate,
 } from "@/services/documentService";
+import { getEmployees } from "@/services/employeeService";
 import { PageHeader, StatusBadge, Section, Kpi } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 
@@ -69,7 +70,7 @@ function LabeledInput({ label, value, onChange, editing, type = "text", mono = f
   );
 }
 
-function LabeledSelect({ label, value, onChange, editing, options }) {
+function LabeledSelect({ label, value, onChange, editing, options, placeholder }) {
   return (
     <div>
       <label className="mb-1 block text-xs font-semibold text-muted-foreground">{label}</label>
@@ -79,6 +80,7 @@ function LabeledSelect({ label, value, onChange, editing, options }) {
           onChange={(e) => onChange(e.target.value)}
           className={inputCls(true) + " bg-white"}
         >
+          {placeholder && <option value="">{placeholder}</option>}
           {options.map((o) => (
             <option key={o} value={o}>{o}</option>
           ))}
@@ -131,6 +133,7 @@ export default function CustomerDetailPage() {
   const [orders, setOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [docsLoading, setDocsLoading] = useState(true);
+  const [employees, setEmployees] = useState([]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -163,6 +166,12 @@ export default function CustomerDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    getEmployees({ limit: 100 })
+      .then((res) => setEmployees(res?.data?.employees || res?.employees || (Array.isArray(res) ? res : [])))
+      .catch(() => {});
+  }, []);
 
   const setContact = (field, val) => setForm((f) => ({ ...f, contactPerson: { ...f.contactPerson, [field]: val } }));
   const setAddr = (field, val) => setForm((f) => ({ ...f, address: { ...f.address, [field]: val } }));
@@ -287,7 +296,14 @@ export default function CustomerDetailPage() {
               <LabeledInput label="GST Number" value={form.gstNumber} editing={editing} mono onChange={(v) => setForm((f) => ({ ...f, gstNumber: v.toUpperCase() }))} />
               <LabeledInput label="PAN Number" value={form.panNumber} editing={editing} mono onChange={(v) => setForm((f) => ({ ...f, panNumber: v.toUpperCase() }))} />
               <LabeledSelect label="Status" value={form.status} editing={editing} options={["Active", "Lead", "Inactive"]} onChange={(v) => setForm((f) => ({ ...f, status: v }))} />
-              <LabeledInput label="Assigned Salesperson" value={form.salesPerson} editing={editing} onChange={(v) => setForm((f) => ({ ...f, salesPerson: v }))} />
+              <LabeledSelect
+                label="Assigned Salesperson"
+                value={form.salesPerson}
+                editing={editing}
+                options={employees.map((e) => e.fullName)}
+                placeholder={employees.length > 0 ? "-- Select Salesperson --" : "No employees yet -- add one in HR first"}
+                onChange={(v) => setForm((f) => ({ ...f, salesPerson: v }))}
+              />
             </div>
           </Section>
 

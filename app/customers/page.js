@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/services/documentService";
+import { getEmployees } from "@/services/employeeService";
 import { DataTable, Kpi, PageHeader, StatusBadge, Field } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ const PAYMENT_TERMS = ["Immediate", "7 Days Net", "15 Days Net", "30 Days Net", 
 export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -59,6 +61,12 @@ export default function CustomersPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    getEmployees({ limit: 100 })
+      .then((res) => setEmployees(res?.data?.employees || res?.employees || (Array.isArray(res) ? res : [])))
+      .catch(() => {});
+  }, []);
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -345,13 +353,20 @@ export default function CustomersPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned Salesperson</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Kiran Jadhav"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <select
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                       value={form.salesPerson}
                       onChange={(e) => setForm((f) => ({ ...f, salesPerson: e.target.value }))}
-                    />
+                    >
+                      <option value="">
+                        {employees.length > 0 ? "-- Select Salesperson --" : "No employees yet -- add one in HR first"}
+                      </option>
+                      {employees.map((emp) => (
+                        <option key={emp._id || emp.employeeCode} value={emp.fullName}>
+                          {emp.fullName} {emp.role ? `(${emp.role})` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

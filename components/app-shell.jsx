@@ -7,8 +7,6 @@ import {
   LayoutDashboard,
   Users,
   UserPlus,
-  MapPin,
-  MessagesSquare,
   BellRing,
   FileText,
   Receipt,
@@ -28,7 +26,6 @@ import {
   Users2,
   CalendarCheck,
   BarChart3,
-  Upload,
   Lock,
   ScrollText,
   Server,
@@ -75,8 +72,6 @@ const NAV = [
     items: [
       { label: "Leads", href: "/leads", icon: UserPlus },
       { label: "Customers", href: "/customers", icon: Users },
-      { label: "Visits", href: "/visits", icon: MapPin },
-      { label: "Communications", href: "/communications", icon: MessagesSquare },
       { label: "WhatsApp Inbox", href: "/whatsapp", icon: MessageCircle },
       { label: "Email", href: "/email", icon: Mail },
       { label: "AI Processing", href: "/ai-processing", icon: Bot },
@@ -135,7 +130,6 @@ const NAV = [
       { label: "Reports", href: "/reports", icon: BarChart3 },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Company Settings", href: "/company-settings", icon: Building2 },
-      { label: "Data Migration", href: "/migration", icon: Upload },
       { label: "Users & Roles", href: "/users-roles", icon: Lock },
       { label: "Audit Logs", href: "/audit-logs", icon: ScrollText },
       { label: "Deployment", href: "/administration", icon: Server }
@@ -145,7 +139,6 @@ const NAV = [
 const QUICK_ACTIONS = [
   "Create Lead",
   "Add Customer",
-  "Add Visit",
   "Create Quotation",
   "Create Proforma Invoice",
   "Create Sales Order",

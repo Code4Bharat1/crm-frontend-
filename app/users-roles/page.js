@@ -53,8 +53,6 @@ export const SIDEBAR_MODULES = [
     items: [
       { key: "leads", label: "Leads", href: "/leads" },
       { key: "customers", label: "Customers", href: "/customers" },
-      { key: "visits", label: "Visits", href: "/visits" },
-      { key: "communications", label: "Communications", href: "/communications" },
       { key: "whatsapp", label: "WhatsApp Inbox", href: "/whatsapp" },
       { key: "email", label: "Email", href: "/email" },
       { key: "ai_processing", label: "AI Processing", href: "/ai-processing" },
@@ -113,7 +111,6 @@ export const SIDEBAR_MODULES = [
       { key: "reports", label: "Reports", href: "/reports" },
       { key: "notifications", label: "Notifications", href: "/notifications" },
       { key: "company_settings", label: "Company Settings", href: "/company-settings" },
-      { key: "migration", label: "Data Migration", href: "/migration" },
       { key: "users_roles", label: "Users & Roles", href: "/users-roles" },
       { key: "audit_logs", label: "Audit Logs", href: "/audit-logs" },
       { key: "deployment", label: "Deployment", href: "/administration" },

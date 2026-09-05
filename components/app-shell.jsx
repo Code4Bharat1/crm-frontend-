@@ -61,7 +61,8 @@ import {
 import { StatusBadge } from "@/components/crm-ui";
 import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, hasPermission, clearAuthData } from "@/lib/authUtils";
+import { getUser, hasPermission, clearAuthData, canAccessModule, canAccessRecord, canAccessPath } from "@/lib/authUtils";
+import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
 import { useRouter } from "next/navigation";
 
 // Presentation-only: maps each SIDEBAR_MODULES key to its sidebar icon.

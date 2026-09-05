@@ -61,7 +61,7 @@ import {
 import { StatusBadge } from "@/components/crm-ui";
 import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, getSidebarPermissions, canAccessPath, getFirstAllowedHref, clearAuthData } from "@/lib/authUtils";
+import { getUser, hasPermission, clearAuthData, canAccessModule, canAccessRecord, canAccessPath } from "@/lib/authUtils";
 import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
 import { useRouter } from "next/navigation";
 
@@ -126,28 +126,32 @@ const QUICK_ACTIONS = [
 
 const getFilteredNav = () => {
   const user = getUser();
+  if (!user) return [];
   const role = (user?.role || '').toLowerCase().trim();
   const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
 
-  // Admins always see everything.
+  // For Admin, show EVERYTHING in the sidebar
   if (isSuperAdmin) {
     return NAV;
   }
 
-  const sidebarPermissions = getSidebarPermissions();
+  const isFinancial = hasPermission('financial');
+  const isAdmin = hasPermission('admin');
+  const isApprove = hasPermission('approve'); // Often used for HR and Admin
 
-  // No role configured in Users & Roles yet for this account's role -- show
-  // everything rather than silently locking the user out.
-  if (!sidebarPermissions) {
-    return NAV;
-  }
-
-  return NAV
-    .map(group => ({
-      ...group,
-      items: group.items.filter(it => !!sidebarPermissions[it.key]),
-    }))
-    .filter(group => group.items.length > 0);
+  return NAV.map(group => {
+    if (group.group === "Finance" && !isFinancial) return null;
+    if (group.group === "Administration" && !isAdmin) return null;
+    if (group.group === "People") {
+      if (isAdmin || isApprove) return group;
+      // Allow regular employees to access Attendance to punch in/out and view their records
+      return {
+        ...group,
+        items: group.items.filter(it => it.href === "/attendance")
+      };
+    }
+    return group;
+  }).filter(Boolean);
 };
 
 function SidebarNav({ onNavigate }) {
@@ -191,18 +195,16 @@ function AppShell({ children }) {
       if (pathname !== '/login') {
         router.replace('/login');
       }
-      return;
-    }
-
-    const role = (u.role || '').toLowerCase().trim();
-    const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
-    if (isSuperAdmin) return;
-
-    if (!canAccessPath(pathname)) {
-      toast.error("You are not authorized to view this module.");
-      const fallback = getFirstAllowedHref();
-      if (fallback && fallback !== pathname) {
-        router.replace(fallback);
+    } else {
+      const isFinancePath = pathname.startsWith('/ledger') || pathname.startsWith('/banking') || pathname.startsWith('/gst');
+      const isAdminPath = pathname.startsWith('/users-roles') || pathname.startsWith('/audit-logs') || pathname.startsWith('/company-settings') || pathname.startsWith('/administration');
+      
+      if (isFinancePath && !hasPermission('financial')) {
+        toast.error("You are not authorized to view financial modules.");
+        router.push('/');
+      } else if (isAdminPath && !hasPermission('admin')) {
+        toast.error("You are not authorized to view administrative modules.");
+        router.push('/');
       }
     }
   }, [pathname, router]);
@@ -224,7 +226,7 @@ function AppShell({ children }) {
     return pages;
   }, [user]);
 
-  // Filter sidebar pages matching search query
+  // Filter sidebar pages matching search query strictly from permitted navigation
   const matchingPages = useMemo(() => {
     const query = q.trim().toLowerCase();
     if (!query) return allNavPages;
@@ -235,6 +237,34 @@ function AppShell({ children }) {
       return matchLabel || matchGroup || matchHref;
     });
   }, [allNavPages, q]);
+
+  // Filter business records matching search query strictly by user permission
+  const hits = useMemo(() => {
+    if (!q.trim()) return [];
+    const allHits = globalSearch(q);
+    return allHits.filter((h) => canAccessRecord(h.kind));
+  }, [q, user]);
+
+  const QUICK_ACTION_MODULE_MAP = {
+    "Create Lead": "leads",
+    "Add Customer": "customers",
+    "Create Quotation": "quotations",
+    "Create Proforma Invoice": "proformas",
+    "Create Sales Order": "orders",
+    "Create Delivery Note": "deliveries",
+    "Create Sales Invoice": "invoices",
+    "Record Payment": "payments",
+    "Create Project": "projects",
+    "Create Service Request": "service",
+    "Add Follow-up": "follow_ups"
+  };
+
+  const permittedQuickActions = useMemo(() => {
+    return QUICK_ACTIONS.filter((action) => {
+      const mod = QUICK_ACTION_MODULE_MAP[action];
+      return mod ? canAccessModule(mod) : true;
+    });
+  }, [user]);
 
   // Global keyboard shortcut: Ctrl+K or Cmd+K to open search dialog
   useEffect(() => {
@@ -295,7 +325,6 @@ function AppShell({ children }) {
     role: user?.role || "Member"
   };
 
-  const hits = globalSearch(q);
   const unread = notifications.filter((n) => !n.read).length;
 
   return (
@@ -323,7 +352,7 @@ function AppShell({ children }) {
             className="flex h-10 flex-1 items-center gap-2 rounded-md bg-white/12 px-3 text-left text-sm text-white/80 transition-colors hover:bg-white/20"
           >
             <Search className="size-4 shrink-0" />
-            <span className="truncate">Search pages (Leads, Quotations, Invoices, Audit Logs…), customers, records…</span>
+            <span className="truncate">Search permitted pages and records…</span>
             <kbd className="hidden sm:inline-flex ml-auto h-5 items-center gap-1 rounded border border-white/25 bg-white/10 px-1.5 font-mono text-[10px] font-semibold text-white/80">
               Ctrl+K
             </kbd>
@@ -337,7 +366,7 @@ function AppShell({ children }) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Create new</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {QUICK_ACTIONS.map((a) => (
+              {permittedQuickActions.map((a) => (
                 <DropdownMenuItem
                   key={a}
                   onSelect={() => toast.info(a, { description: "Prototype form — connect backend to persist this record." })}
@@ -389,12 +418,16 @@ function AppShell({ children }) {
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuLabel>{currentUser.email}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/users-roles">Role &amp; permissions</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/audit-logs">My audit trail</Link>
-              </DropdownMenuItem>
+              {canAccessPath("/users-roles") && (
+                <DropdownMenuItem asChild>
+                  <Link href="/users-roles">Role &amp; permissions</Link>
+                </DropdownMenuItem>
+              )}
+              {canAccessPath("/audit-logs") && (
+                <DropdownMenuItem asChild>
+                  <Link href="/audit-logs">My audit trail</Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <button onClick={handleLogout} className="w-full text-left text-destructive flex items-center">
@@ -409,7 +442,7 @@ function AppShell({ children }) {
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput
-          placeholder="Search all sidebar pages (e.g. Quotations, Attendance, Audit Logs) or records…"
+          placeholder="Search permitted pages (e.g. Leads, Quotations, Attendance) or records…"
           value={q}
           onValueChange={setQ}
         />

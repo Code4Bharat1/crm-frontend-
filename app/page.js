@@ -124,21 +124,8 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader
-        breadcrumb="CONTECH / Overview"
-        title="Executive Dashboard"
-        subtitle="Single view of leads, sales, collections, projects, service and inventory health"
-        actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link href="/reports">Open reports</Link>
-            </Button>
-            <Button className="bg-accent font-bold text-accent-foreground hover:bg-accent/90" asChild>
-              <Link href="/leads">Lead pipeline</Link>
-            </Button>
-          </>
-        }
-      />
+      
+     
       
       {!isAdmin && <AttendanceWidget />}
 

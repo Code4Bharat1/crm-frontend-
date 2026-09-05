@@ -47,6 +47,7 @@ export default function Page() {
   const criticalCount = items.filter((n) => n.severity === "danger").length;
   const projectCount = items.filter((n) => n.type === "Project").length;
   const serviceCount = items.filter((n) => n.type === "Service").length;
+  const customerCount = items.filter((n) => n.type === "Customer").length;
 
   const filteredItems = items.filter((n) => {
     if (filterType === "All") return true;
@@ -61,16 +62,17 @@ export default function Page() {
         title="Notification Centre"
         subtitle="Live notifications for technician dispatches, project manager assignments, appointments, overdue follow-ups, and team alerts."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Kpi label="Unread" value={unreadCount} tone="accent" />
         <Kpi label="Technician Dispatches" value={serviceCount} tone="success" sub="Field service tickets" />
         <Kpi label="Project Alerts" value={projectCount} sub="PM Assignments" />
+        <Kpi label="Customer Alerts" value={customerCount} sub="Salesperson Assignments" />
         <Kpi label="Total Alerts" value={items.length} />
       </div>
 
       {/* Filter Tabs */}
       <div className="mt-4 flex items-center gap-2 bg-white p-1.5 rounded-xl border border-gray-200 shadow-2xs w-fit text-xs font-semibold">
-        {["All", "Service", "Project", "Unread"].map((tab) => (
+        {["All", "Service", "Project", "Customer", "Unread"].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -81,7 +83,7 @@ export default function Page() {
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
             }`}
           >
-            {tab === "Service" ? `Technician Dispatch (${serviceCount})` : tab === "Project" ? `Project Manager (${projectCount})` : tab}
+            {tab === "Service" ? `Technician Dispatch (${serviceCount})` : tab === "Project" ? `Project Manager (${projectCount})` : tab === "Customer" ? `Salesperson (${customerCount})` : tab}
           </button>
         ))}
       </div>

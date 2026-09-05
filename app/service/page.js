@@ -977,30 +977,21 @@ export default function ServiceRequestsPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Customer / Client <span className="text-red-500">*</span>
                   </label>
-                  {customers.length > 0 ? (
-                    <select
-                      value={form.customerId}
-                      onChange={handleCustomerChange}
-                      required
-                      className="w-full text-xs border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
-                    >
-                      <option value="">-- Select Customer --</option>
-                      {customers.map((c) => (
-                        <option key={c.id || c._id} value={c.id || c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Customer Name"
-                      value={form.customerName}
-                      onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-                      className="w-full text-xs border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  )}
+                  <select
+                    value={form.customerId}
+                    onChange={handleCustomerChange}
+                    required
+                    className="w-full text-xs border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
+                  >
+                    <option value="">
+                      {customers.length > 0 ? "-- Select Customer --" : "No customers yet -- add one in Customers first"}
+                    </option>
+                    {customers.map((c) => (
+                      <option key={c.id || c._id} value={c.id || c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* 3. Product / Unit Name Dropdown with Custom option */}

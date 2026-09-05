@@ -245,14 +245,10 @@ export default function DeliveriesPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Customer *</label>
-                  {customers.length > 0 ? (
-                    <select className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none bg-white" onChange={e => handleCustomerSelect(e.target.value)} defaultValue="">
-                      <option value="">Select customer…</option>
-                      {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
-                    </select>
-                  ) : (
-                    <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.customer.name} onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, name: e.target.value } }))} placeholder="Customer name" />
-                  )}
+                  <select className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none bg-white" onChange={e => handleCustomerSelect(e.target.value)} defaultValue="">
+                    <option value="">{customers.length > 0 ? "Select customer…" : "No customers yet -- add one in Customers first"}</option>
+                    {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Transporter</label>

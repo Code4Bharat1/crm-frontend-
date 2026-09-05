@@ -651,62 +651,45 @@ export default function ProjectsPage() {
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Customer / Client <span className="text-red-500">*</span>
                   </label>
-                  {customers.length > 0 ? (
-                    <select
-                      value={form.customerId}
-                      onChange={handleCustomerChange}
-                      required
-                      className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    >
-                      <option value="">-- Select Customer --</option>
-                      {customers.map((c) => (
-                        <option key={c.id || c._id} value={c.id || c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Customer Legal Name"
-                      value={form.customerName}
-                      onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-                      className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  )}
+                  <select
+                    value={form.customerId}
+                    onChange={handleCustomerChange}
+                    required
+                    className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  >
+                    <option value="">
+                      {customers.length > 0 ? "-- Select Customer --" : "No customers yet -- add one in Customers first"}
+                    </option>
+                    {customers.map((c) => (
+                      <option key={c.id || c._id} value={c.id || c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Project Manager
                   </label>
-                  {projectManagers.length > 0 ? (
-                    <select
-                      value={form.manager}
-                      onChange={(e) => setForm({ ...form, manager: e.target.value })}
-                      className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
-                    >
-                      <option value="">-- Select Project Manager --</option>
-                      {projectManagers.map((emp) => (
-                        <option key={emp._id || emp.employeeCode} value={emp.fullName}>
-                          {emp.fullName} {emp.role ? `(${emp.role})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="space-y-1">
-                      <input
-                        type="text"
-                        placeholder="e.g. Project Manager name"
-                        value={form.manager}
-                        onChange={(e) => setForm({ ...form, manager: e.target.value })}
-                        className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                      <p className="text-[11px] text-amber-600">
-                        No employees with &quot;Project Manager&quot; role found. You can type a name or assign this role in HR.
-                      </p>
-                    </div>
+                  <select
+                    value={form.manager}
+                    onChange={(e) => setForm({ ...form, manager: e.target.value })}
+                    className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
+                  >
+                    <option value="">
+                      {employees.length > 0 ? "-- Select Project Manager --" : "No employees yet -- add one in HR first"}
+                    </option>
+                    {(projectManagers.length > 0 ? projectManagers : employees).map((emp) => (
+                      <option key={emp._id || emp.employeeCode} value={emp.fullName}>
+                        {emp.fullName} {emp.role ? `(${emp.role})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {projectManagers.length === 0 && employees.length > 0 && (
+                    <p className="text-[11px] text-amber-600 mt-1">
+                      No one is tagged &quot;Project Manager&quot; in HR yet -- showing all employees.
+                    </p>
                   )}
                 </div>
 

@@ -456,36 +456,20 @@ function QuotationsContent() {
                       + Add New Customer
                     </button>
                   </div>
-                  {customers.length > 0 ? (
-                    <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      value={form.customer.id || ""}
-                      onChange={e => handleCustomerSelect(e.target.value)}
-                    >
-                      <option value="">Select customer…</option>
-                      {customers.map(c => (
-                        <option key={c._id || c.id} value={c._id || c.id}>
-                          {c.name} ({c.id || "CUST"})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={form.customer.name}
-                        onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, name: e.target.value } }))}
-                        placeholder="Customer name"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowQuickCust(true)}
-                        className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 whitespace-nowrap"
-                      >
-                        + Add
-                      </button>
-                    </div>
-                  )}
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    value={form.customer.id || ""}
+                    onChange={e => handleCustomerSelect(e.target.value)}
+                  >
+                    <option value="">
+                      {customers.length > 0 ? "Select customer…" : "No customers yet -- use + Add New Customer above"}
+                    </option>
+                    {customers.map(c => (
+                      <option key={c._id || c.id} value={c._id || c.id}>
+                        {c.name} ({c.id || "CUST"})
+                      </option>
+                    ))}
+                  </select>
                   {form.customer.name && (
                     <div className="mt-1 text-xs text-gray-500 bg-gray-50 px-2.5 py-1 rounded border">
                       Selected: <strong>{form.customer.name}</strong> {form.customer.contactPerson && `· Attn: ${form.customer.contactPerson}`}

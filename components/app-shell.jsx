@@ -61,7 +61,7 @@ import {
 import { StatusBadge } from "@/components/crm-ui";
 import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, hasPermission, clearAuthData, canAccessModule, canAccessRecord, canAccessPath } from "@/lib/authUtils";
+import { getUser, clearAuthData, canAccessModule, canAccessRecord, canAccessPath, getSidebarPermissions, getFirstAllowedHref } from "@/lib/authUtils";
 import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
 import { useRouter } from "next/navigation";
 
@@ -130,28 +130,25 @@ const getFilteredNav = () => {
   const role = (user?.role || '').toLowerCase().trim();
   const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
 
-  // For Admin, show EVERYTHING in the sidebar
+  // Admins always see everything.
   if (isSuperAdmin) {
     return NAV;
   }
 
-  const isFinancial = hasPermission('financial');
-  const isAdmin = hasPermission('admin');
-  const isApprove = hasPermission('approve'); // Often used for HR and Admin
+  const sidebarPermissions = getSidebarPermissions();
 
-  return NAV.map(group => {
-    if (group.group === "Finance" && !isFinancial) return null;
-    if (group.group === "Administration" && !isAdmin) return null;
-    if (group.group === "People") {
-      if (isAdmin || isApprove) return group;
-      // Allow regular employees to access Attendance to punch in/out and view their records
-      return {
-        ...group,
-        items: group.items.filter(it => it.href === "/attendance")
-      };
-    }
-    return group;
-  }).filter(Boolean);
+  // No role configured in Users & Roles yet for this account's role -- show
+  // everything rather than silently locking the user out.
+  if (!sidebarPermissions) {
+    return NAV;
+  }
+
+  return NAV
+    .map(group => ({
+      ...group,
+      items: group.items.filter(it => !!sidebarPermissions[it.key]),
+    }))
+    .filter(group => group.items.length > 0);
 };
 
 function SidebarNav({ onNavigate }) {
@@ -195,16 +192,18 @@ function AppShell({ children }) {
       if (pathname !== '/login') {
         router.replace('/login');
       }
-    } else {
-      const isFinancePath = pathname.startsWith('/ledger') || pathname.startsWith('/banking') || pathname.startsWith('/gst');
-      const isAdminPath = pathname.startsWith('/users-roles') || pathname.startsWith('/audit-logs') || pathname.startsWith('/company-settings') || pathname.startsWith('/administration');
-      
-      if (isFinancePath && !hasPermission('financial')) {
-        toast.error("You are not authorized to view financial modules.");
-        router.push('/');
-      } else if (isAdminPath && !hasPermission('admin')) {
-        toast.error("You are not authorized to view administrative modules.");
-        router.push('/');
+      return;
+    }
+
+    const role = (u.role || '').toLowerCase().trim();
+    const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
+    if (isSuperAdmin) return;
+
+    if (!canAccessPath(pathname)) {
+      toast.error("You are not authorized to view this module.");
+      const fallback = getFirstAllowedHref();
+      if (fallback && fallback !== pathname) {
+        router.replace(fallback);
       }
     }
   }, [pathname, router]);

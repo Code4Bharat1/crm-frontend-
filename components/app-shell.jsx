@@ -62,80 +62,55 @@ import {
 import { StatusBadge } from "@/components/crm-ui";
 import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, hasPermission, clearAuthData } from "@/lib/authUtils";
+import { getUser, getSidebarPermissions, canAccessPath, getFirstAllowedHref, clearAuthData } from "@/lib/authUtils";
+import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-const NAV = [
-  { group: "Overview", items: [{ label: "Dashboard", href: "/", icon: LayoutDashboard }] },
-  {
-    group: "CRM",
-    items: [
-      { label: "Leads", href: "/leads", icon: UserPlus },
-      { label: "Customers", href: "/customers", icon: Users },
-      { label: "WhatsApp Inbox", href: "/whatsapp", icon: MessageCircle },
-      { label: "Email", href: "/email", icon: Mail },
-      { label: "AI Processing", href: "/ai-processing", icon: Bot },
-      { label: "Follow-ups", href: "/follow-ups", icon: BellRing }
-    ]
-  },
-  {
-    group: "Sales",
-    items: [
-      { label: "Quotations", href: "/quotations", icon: FileText },
-      { label: "Proforma Invoices", href: "/proformas", icon: Receipt },
-      { label: "Sales Orders", href: "/orders", icon: ClipboardList },
-      { label: "Delivery Notes", href: "/deliveries", icon: Truck },
-      { label: "Sales Invoices", href: "/invoices", icon: Receipt },
-      { label: "Payments", href: "/payments", icon: IndianRupee }
-    ]
-  },
-  {
-    group: "Products & Inventory",
-    items: [
-      { label: "Product Master", href: "/products", icon: Package },
-      { label: "Inventory & Stock", href: "/inventory", icon: Boxes },
-      { label: "Serial Numbers", href: "/serial-numbers", icon: Barcode },
-      { label: "Suppliers", href: "/suppliers", icon: Users2 },
-      { label: "Purchase Orders", href: "/purchase", icon: ShoppingCart }
-    ]
-  },
-  {
-    group: "Projects & Service",
-    items: [
-      { label: "Projects", href: "/projects", icon: FolderKanban },
-      { label: "Project Profitability", href: "/profitability", icon: TrendingUp },
-      { label: "Service Requests", href: "/service", icon: Wrench },
-      { label: "Warranty", href: "/warranty", icon: ShieldCheck }
-    ]
-  },
-  {
-    group: "Finance",
-    items: [
-      { label: "Customer Ledger", href: "/ledger", icon: BookOpen },
-      { label: "Bank Reconciliation", href: "/banking", icon: Landmark },
-      { label: "GST", href: "/gst", icon: Percent }
-    ]
-  },
-  {
-    group: "People",
-    items: [
-      { label: "Employees & HR", href: "/hr", icon: Users2 },
-      { label: "Attendance", href: "/attendance", icon: CalendarCheck },
-      { label: "Sales Performance", href: "/sales-performance", icon: BarChart3 }
-    ]
-  },
-  {
-    group: "Administration",
-    items: [
-      { label: "Reports", href: "/reports", icon: BarChart3 },
-      { label: "Notifications", href: "/notifications", icon: Bell },
-      { label: "Company Settings", href: "/company-settings", icon: Building2 },
-      { label: "Users & Roles", href: "/users-roles", icon: Lock },
-      { label: "Audit Logs", href: "/audit-logs", icon: ScrollText },
-      { label: "Deployment", href: "/administration", icon: Server }
-    ]
-  }
-];
+
+// Presentation-only: maps each SIDEBAR_MODULES key to its sidebar icon.
+// SIDEBAR_MODULES itself (label/href/key) is shared with the Users & Roles
+// permission editor so the two can never drift apart.
+const MODULE_ICONS = {
+  dashboard: LayoutDashboard,
+  leads: UserPlus,
+  customers: Users,
+  whatsapp: MessageCircle,
+  email: Mail,
+  ai_processing: Bot,
+  follow_ups: BellRing,
+  quotations: FileText,
+  proformas: Receipt,
+  orders: ClipboardList,
+  deliveries: Truck,
+  invoices: Receipt,
+  payments: IndianRupee,
+  products: Package,
+  inventory: Boxes,
+  serial_numbers: Barcode,
+  suppliers: Users2,
+  purchase: ShoppingCart,
+  projects: FolderKanban,
+  profitability: TrendingUp,
+  service: Wrench,
+  warranty: ShieldCheck,
+  ledger: BookOpen,
+  banking: Landmark,
+  gst: Percent,
+  hr: Users2,
+  attendance: CalendarCheck,
+  sales_performance: BarChart3,
+  reports: BarChart3,
+  notifications: Bell,
+  company_settings: Building2,
+  users_roles: Lock,
+  audit_logs: ScrollText,
+  deployment: Server,
+};
+
+const NAV = SIDEBAR_MODULES.map((group) => ({
+  group: group.group,
+  items: group.items.map((item) => ({ ...item, icon: MODULE_ICONS[item.key] })),
+}));
 const QUICK_ACTIONS = [
   "Create Lead",
   "Add Customer",
@@ -155,28 +130,25 @@ const getFilteredNav = () => {
   const role = (user?.role || '').toLowerCase().trim();
   const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
 
-  // For Admin, show EVERYTHING in the sidebar
+  // Admins always see everything.
   if (isSuperAdmin) {
     return NAV;
   }
 
-  const isFinancial = hasPermission('financial');
-  const isAdmin = hasPermission('admin');
-  const isApprove = hasPermission('approve'); // Often used for HR and Admin
+  const sidebarPermissions = getSidebarPermissions();
 
-  return NAV.map(group => {
-    if (group.group === "Finance" && !isFinancial) return null;
-    if (group.group === "Administration" && !isAdmin) return null;
-    if (group.group === "People") {
-      if (isAdmin || isApprove) return group;
-      // Allow regular employees to access Attendance to punch in/out and view their records
-      return {
-        ...group,
-        items: group.items.filter(it => it.href === "/attendance")
-      };
-    }
-    return group;
-  }).filter(Boolean);
+  // No role configured in Users & Roles yet for this account's role -- show
+  // everything rather than silently locking the user out.
+  if (!sidebarPermissions) {
+    return NAV;
+  }
+
+  return NAV
+    .map(group => ({
+      ...group,
+      items: group.items.filter(it => !!sidebarPermissions[it.key]),
+    }))
+    .filter(group => group.items.length > 0);
 };
 
 function SidebarNav({ onNavigate }) {
@@ -220,16 +192,18 @@ function AppShell({ children }) {
       if (pathname !== '/login') {
         router.replace('/login');
       }
-    } else {
-      const isFinancePath = pathname.startsWith('/ledger') || pathname.startsWith('/banking') || pathname.startsWith('/gst');
-      const isAdminPath = pathname.startsWith('/users-roles') || pathname.startsWith('/audit-logs') || pathname.startsWith('/company-settings') || pathname.startsWith('/administration');
-      
-      if (isFinancePath && !hasPermission('financial')) {
-        toast.error("You are not authorized to view financial modules.");
-        router.push('/');
-      } else if (isAdminPath && !hasPermission('admin')) {
-        toast.error("You are not authorized to view administrative modules.");
-        router.push('/');
+      return;
+    }
+
+    const role = (u.role || '').toLowerCase().trim();
+    const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
+    if (isSuperAdmin) return;
+
+    if (!canAccessPath(pathname)) {
+      toast.error("You are not authorized to view this module.");
+      const fallback = getFirstAllowedHref();
+      if (fallback && fallback !== pathname) {
+        router.replace(fallback);
       }
     }
   }, [pathname, router]);

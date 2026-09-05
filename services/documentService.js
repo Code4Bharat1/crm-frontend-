@@ -32,6 +32,7 @@ export const getCustomer = (id) => req(`/customers/${id}`);
 export const createCustomer = (data) => req('/customers', { method: 'POST', body: JSON.stringify(data) });
 export const updateCustomer = (id, data) => req(`/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteCustomer = (id) => req(`/customers/${id}`, { method: 'DELETE' });
+export const getCustomerLedger = () => req('/customers/ledger');
 
 // ─── Suppliers ───────────────────────────────────────────────────────────────
 export const getSuppliers = (params = {}) => req('/suppliers?' + new URLSearchParams(params));
@@ -84,6 +85,7 @@ export const createInvoice = (data) => req('/invoices', { method: 'POST', body: 
 export const updateInvoice = (id, data) => req(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteInvoice = (id) => req(`/invoices/${id}`, { method: 'DELETE' });
 export const recordPayment = (id, data) => req(`/invoices/${id}/record-payment`, { method: 'POST', body: JSON.stringify(data) });
+export const getPaymentsLedger = () => req('/invoices/payments-ledger');
 
 // ─── Purchase Orders ─────────────────────────────────────────────────────────
 export const getPurchaseOrders = (params = {}) => req('/purchase-orders?' + new URLSearchParams(params));

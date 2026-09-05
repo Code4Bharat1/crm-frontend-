@@ -1,32 +1,75 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { AppShell } from "@/components/app-shell";
-import { DataTable, KeyValue, Kpi, Metric, NotBuiltNotice, PageHeader, Section, StatusBadge } from "@/components/crm-ui";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { fmtDate, fmtDateTime, inr, inrShort } from "@/lib/crm-data";
-import { invoices } from "@/lib/crm-data";
+import { getInvoices } from "@/services/documentService";
+import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
+import { inr, inrShort, fmtDate } from "@/lib/crm-data";
 
 export default function Page() {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getInvoices()
+      .then((data) => setInvoices(Array.isArray(data) ? data : []))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const taxableValue = invoices.reduce((s, i) => s + (i.subtotal || 0), 0);
+  const cgstSgst = invoices.reduce((s, i) => s + (i.totalCgst || 0) + (i.totalSgst || 0), 0);
+  const igst = invoices.reduce((s, i) => s + (i.totalIgst || 0), 0);
+
   return (
     <>
-      <PageHeader breadcrumb="Finance / GST" title="GST" subtitle="Invoice data in a GST-compatible structure — GSTIN, taxable value, CGST, SGST, IGST, invoice number, date and rate — exportable without Excel gymnastics." />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Kpi label="Invoices in period" value={invoices.length} /><Kpi label="Taxable value" value={inrShort(invoices.reduce((s, i) => s + i.taxable, 0))} /><Kpi label="CGST + SGST" value={inrShort(invoices.reduce((s, i) => s + i.cgst + i.sgst, 0))} tone="accent" /><Kpi label="IGST" value={inrShort(invoices.reduce((s, i) => s + i.igst, 0))} tone="accent" /></div>
+      <PageHeader
+        breadcrumb="Finance / GST"
+        title="GST"
+        subtitle="Real invoice data in a GST-compatible structure — GSTIN, taxable value, CGST, SGST, IGST, invoice number and date — pulled live from Sales Invoices."
+      />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi label="Invoices" value={invoices.length} />
+        <Kpi label="Taxable value" value={inrShort(taxableValue)} />
+        <Kpi label="CGST + SGST" value={inrShort(cgstSgst)} tone="accent" />
+        <Kpi label="IGST" value={inrShort(igst)} tone="accent" />
+      </div>
       <div className="mt-5">
-        <DataTable rows={invoices} columns={[
-            { header: "Invoice", cell: (r) => r.id },
-            { header: "Date", cell: (r) => fmtDate(r.date) },
-            { header: "Customer", cell: (r) => r.customerName },
-            { header: "GSTIN", cell: (r) => <span className="font-mono text-xs">{r.gstin}</span> },
-            { header: "Taxable", cell: (r) => inr(r.taxable) },
-            { header: "Rate", cell: (r) => "18%" },
-            { header: "CGST", cell: (r) => inr(r.cgst) },
-            { header: "SGST", cell: (r) => inr(r.sgst) },
-            { header: "IGST", cell: (r) => inr(r.igst) },
-            { header: "Total", cell: (r) => inr(r.total) },
-          ]} searchKeys={["id", "customerName", "gstin"]} />
+        {loading ? (
+          <div className="flex h-40 items-center justify-center">
+            <div className="size-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-destructive">{error}</p>
+        ) : (
+          <DataTable
+            rows={invoices}
+            columns={[
+              {
+                header: "Invoice",
+                cell: (r) => (
+                  <Link href={`/invoices/${r.invoiceNo}`} className="font-medium text-primary hover:underline">
+                    {r.invoiceNo}
+                  </Link>
+                ),
+              },
+              { header: "Date", cell: (r) => fmtDate(r.date) },
+              { header: "Customer", cell: (r) => r.customer?.name || "—" },
+              { header: "GSTIN", cell: (r) => <span className="font-mono text-xs">{r.customer?.gstNumber || "—"}</span> },
+              { header: "Type", cell: (r) => <StatusBadge value={r.isInterState ? "Inter-state (IGST)" : "Intra-state (CGST/SGST)"} /> },
+              { header: "Taxable", cell: (r) => inr(r.subtotal) },
+              { header: "CGST", cell: (r) => inr(r.totalCgst) },
+              { header: "SGST", cell: (r) => inr(r.totalSgst) },
+              { header: "IGST", cell: (r) => inr(r.totalIgst) },
+              { header: "Total", cell: (r) => <span className="font-semibold">{inr(r.grandTotal)}</span> },
+              { header: "Status", cell: (r) => <StatusBadge value={r.status} /> },
+            ]}
+            searchKeys={["invoiceNo", "customer.name", "customer.gstNumber"]}
+            emptyLabel="No invoices yet."
+          />
+        )}
       </div>
     </>
   );

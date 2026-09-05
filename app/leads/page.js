@@ -185,7 +185,16 @@ export default function LeadsPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(`Lead "${customerName}" moved to "${newStage}"!`);
+        if (data.conversion?.customer) {
+          const { customer, created } = data.conversion;
+          toast.success(
+            created
+              ? `Lead "${customerName}" won — customer ${customer.id} created!`
+              : `Lead "${customerName}" won — linked to existing customer ${customer.id}.`
+          );
+        } else {
+          toast.success(`Lead "${customerName}" moved to "${newStage}"!`);
+        }
         await loadLeads();
         setActiveTab(newStage);
       } else {

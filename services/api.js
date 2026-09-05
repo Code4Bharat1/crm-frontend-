@@ -69,6 +69,9 @@ export const fetchApi = async (endpoint, options = {}) => {
               if (refreshData?.data?.permissions) {
                   currentData.permissions = refreshData.data.permissions;
               }
+              if (refreshData?.data?.sidebarPermissions !== undefined) {
+                  currentData.sidebarPermissions = refreshData.data.sidebarPermissions;
+              }
               if (refreshData?.data?.user) {
                   currentData.user = refreshData.data.user;
               }

@@ -295,19 +295,10 @@ export function AttendanceWidget({ onPunchSuccess, title = "Employee Punch In / 
           )}
 
           {status === "COMPLETED" && (
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handlePunchIn}
-                disabled={submitting}
-                variant="outline"
-                className="text-xs font-semibold border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
-              >
-                Re-Punch In
-              </Button>
-              <span className="text-[11px] text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-lg">
-                Shift Logged
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-600 font-medium px-3 py-1.5 bg-gray-100 rounded-lg border border-gray-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+              Shift Logged — next punch-in opens at midnight IST
+            </span>
           )}
         </div>
       </div>

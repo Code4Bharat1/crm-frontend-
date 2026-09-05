@@ -1,6 +1,5 @@
 "use client";
-import React from "react";
-import { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -65,7 +64,6 @@ import { toast } from "sonner";
 import { getUser, getSidebarPermissions, canAccessPath, getFirstAllowedHref, clearAuthData } from "@/lib/authUtils";
 import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 // Presentation-only: maps each SIDEBAR_MODULES key to its sidebar icon.
 // SIDEBAR_MODULES itself (label/href/key) is shared with the Users & Roles
@@ -111,6 +109,7 @@ const NAV = SIDEBAR_MODULES.map((group) => ({
   group: group.group,
   items: group.items.map((item) => ({ ...item, icon: MODULE_ICONS[item.key] })),
 }));
+
 const QUICK_ACTIONS = [
   "Create Lead",
   "Add Customer",
@@ -154,7 +153,7 @@ const getFilteredNav = () => {
 function SidebarNav({ onNavigate }) {
   const pathname = usePathname();
   const filteredNav = getFilteredNav();
-  return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto px-2 py-3" }, filteredNav.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
+  return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto no-scrollbar px-2 py-3" }, filteredNav.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
     const active = it.href === "/" ? pathname === "/" : pathname.startsWith(it.href);
     return /* @__PURE__ */ React.createElement("li", { key: it.href }, /* @__PURE__ */ React.createElement(
       Link,
@@ -208,6 +207,47 @@ function AppShell({ children }) {
     }
   }, [pathname, router]);
 
+  // Extract all navigable sidebar pages according to user access (HOOKS MUST PRECEDE EARLY RETURNS)
+  const allNavPages = useMemo(() => {
+    const nav = getFilteredNav();
+    const pages = [];
+    nav.forEach((group) => {
+      group.items.forEach((item) => {
+        pages.push({
+          label: item.label,
+          href: item.href,
+          group: group.group,
+          icon: item.icon
+        });
+      });
+    });
+    return pages;
+  }, [user]);
+
+  // Filter sidebar pages matching search query
+  const matchingPages = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return allNavPages;
+    return allNavPages.filter((p) => {
+      const matchLabel = p.label.toLowerCase().includes(query);
+      const matchGroup = p.group.toLowerCase().includes(query);
+      const matchHref = p.href.toLowerCase().includes(query);
+      return matchLabel || matchGroup || matchHref;
+    });
+  }, [allNavPages, q]);
+
+  // Global keyboard shortcut: Ctrl+K or Cmd+K to open search dialog
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (pathname === '/login') {
     return <>{children}</>;
   }
@@ -257,22 +297,200 @@ function AppShell({ children }) {
 
   const hits = globalSearch(q);
   const unread = notifications.filter((n) => !n.read).length;
-  return /* @__PURE__ */ React.createElement("div", { className: "flex min-h-screen bg-background" }, /* @__PURE__ */ React.createElement("aside", { className: "sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex" }, /* @__PURE__ */ React.createElement(SidebarNav, null)), /* @__PURE__ */ React.createElement("div", { className: "flex min-w-0 flex-1 flex-col" }, /* @__PURE__ */ React.createElement("header", { className: "topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md" }, /* @__PURE__ */ React.createElement(Sheet, { open: mobileOpen, onOpenChange: setMobileOpen }, /* @__PURE__ */ React.createElement(SheetTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "icon", className: "text-primary-foreground hover:bg-white/15 lg:hidden" }, /* @__PURE__ */ React.createElement(Menu, { className: "size-5" }))), /* @__PURE__ */ React.createElement(SheetContent, { side: "left", className: "w-72 bg-sidebar p-0 text-sidebar-foreground" }, /* @__PURE__ */ React.createElement(SheetTitle, { className: "sr-only" }, "Navigation"), /* @__PURE__ */ React.createElement("div", { className: "flex h-full flex-col" }, /* @__PURE__ */ React.createElement(SidebarNav, { onNavigate: () => setMobileOpen(false) })))), /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: () => setSearchOpen(true),
-      className: "flex h-10 flex-1 items-center gap-2 rounded-md bg-white/12 px-3 text-left text-sm text-white/80 transition-colors hover:bg-white/20"
-    },
-    /* @__PURE__ */ React.createElement(Search, { className: "size-4" }),
-    /* @__PURE__ */ React.createElement("span", { className: "truncate" }, "Search customers, SO-1024, invoices, serials, projects\u2026")
-  ), /* @__PURE__ */ React.createElement(DropdownMenu, null, /* @__PURE__ */ React.createElement(DropdownMenuTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { className: "h-10 gap-1.5 bg-accent font-bold text-accent-foreground hover:bg-accent/90" }, /* @__PURE__ */ React.createElement(Plus, { className: "size-4" }), " ", /* @__PURE__ */ React.createElement("span", { className: "hidden sm:inline" }, "Quick Action"))), /* @__PURE__ */ React.createElement(DropdownMenuContent, { align: "end", className: "w-56" }, /* @__PURE__ */ React.createElement(DropdownMenuLabel, null, "Create new"), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), QUICK_ACTIONS.map((a) => /* @__PURE__ */ React.createElement(
-    DropdownMenuItem,
-    {
-      key: a,
-      onSelect: () => toast.info(a, { description: "Prototype form \u2014 connect backend to persist this record." })
-    },
-    a
-  )))), /* @__PURE__ */ React.createElement(Sheet, null, /* @__PURE__ */ React.createElement(SheetTrigger, { asChild: true }, /* @__PURE__ */ React.createElement(Button, { variant: "ghost", size: "icon", className: "relative text-primary-foreground hover:bg-white/15" }, /* @__PURE__ */ React.createElement(Bell, { className: "size-5" }), unread > 0 ? /* @__PURE__ */ React.createElement("span", { className: "absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground" }, unread) : null)), /* @__PURE__ */ React.createElement(SheetContent, { className: "w-full sm:max-w-md" }, /* @__PURE__ */ React.createElement(SheetTitle, { className: "px-4 pt-4" }, "Notification centre"), /* @__PURE__ */ React.createElement("div", { className: "space-y-2 overflow-y-auto p-4" }, notifications.map((n) => /* @__PURE__ */ React.createElement("div", { key: n.id, className: "rounded-md border border-border bg-card p-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: n.type }), /* @__PURE__ */ React.createElement("span", { className: "text-[11px] text-muted-foreground" }, fmtDateTime(n.at))), /* @__PURE__ */ React.createElement("p", { className: "mt-1.5 text-sm font-semibold" }, n.title), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-muted-foreground" }, n.detail)))))), /* @__PURE__ */ React.createElement(DropdownMenu, null, /* @__PURE__ */ React.createElement(DropdownMenuTrigger, { asChild: true }, /* @__PURE__ */ React.createElement("button", { className: "flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/15" }, /* @__PURE__ */ React.createElement("span", { className: "flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground" }, currentUser.name.split(" ").map((n) => n[0]).join("")), /* @__PURE__ */ React.createElement("span", { className: "hidden text-left leading-tight sm:block" }, /* @__PURE__ */ React.createElement("span", { className: "block text-xs font-semibold" }, currentUser.name), /* @__PURE__ */ React.createElement("span", { className: "block text-[11px] text-white/70" }, currentUser.role)))), /* @__PURE__ */ React.createElement(DropdownMenuContent, { align: "end", className: "w-52" }, /* @__PURE__ */ React.createElement(DropdownMenuLabel, null, currentUser.email), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/users-roles" }, "Role & permissions")), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: "/audit-logs" }, "My audit trail")), /* @__PURE__ */ React.createElement(DropdownMenuSeparator, null), /* @__PURE__ */ React.createElement(DropdownMenuItem, { asChild: true }, /* @__PURE__ */ React.createElement("button", { onClick: handleLogout, className: "w-full text-left text-destructive flex items-center" }, /* @__PURE__ */ React.createElement(LogOut, { className: "mr-2 size-4" }), " Sign out"))))), /* @__PURE__ */ React.createElement("main", { className: "min-w-0 flex-1 p-4 sm:p-6" }, children)), /* @__PURE__ */ React.createElement(CommandDialog, { open: searchOpen, onOpenChange: setSearchOpen }, /* @__PURE__ */ React.createElement(CommandInput, { placeholder: "Try SO-1024, INV-1004, Shakti, CT-ISO, PRJ-303\u2026", value: q, onValueChange: setQ }), /* @__PURE__ */ React.createElement(CommandList, null, /* @__PURE__ */ React.createElement(CommandEmpty, null, "Type a customer, document number, product code or serial number."), hits.length > 0 ? /* @__PURE__ */ React.createElement(CommandGroup, { heading: `${hits.length} matches across all modules` }, hits.map((h) => /* @__PURE__ */ React.createElement(CommandItem, { key: `${h.kind}-${h.label}`, value: `${h.label} ${h.sub} ${h.kind}`, asChild: true }, /* @__PURE__ */ React.createElement(Link, { href: h.href, onClick: () => setSearchOpen(false), className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(StatusBadge, { value: h.kind }), /* @__PURE__ */ React.createElement("span", { className: "font-medium" }, h.label), /* @__PURE__ */ React.createElement("span", { className: "ml-auto text-xs text-muted-foreground" }, h.sub))))) : null)));
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex overflow-hidden">
+        <SidebarNav />
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md">
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/15 lg:hidden">
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="flex h-full flex-col overflow-hidden">
+                <SidebarNav onNavigate={() => setMobileOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex h-10 flex-1 items-center gap-2 rounded-md bg-white/12 px-3 text-left text-sm text-white/80 transition-colors hover:bg-white/20"
+          >
+            <Search className="size-4 shrink-0" />
+            <span className="truncate">Search pages (Leads, Quotations, Invoices, Audit Logs…), customers, records…</span>
+            <kbd className="hidden sm:inline-flex ml-auto h-5 items-center gap-1 rounded border border-white/25 bg-white/10 px-1.5 font-mono text-[10px] font-semibold text-white/80">
+              Ctrl+K
+            </kbd>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="h-10 gap-1.5 bg-accent font-bold text-accent-foreground hover:bg-accent/90">
+                <Plus className="size-4" /> <span className="hidden sm:inline">Quick Action</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Create new</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {QUICK_ACTIONS.map((a) => (
+                <DropdownMenuItem
+                  key={a}
+                  onSelect={() => toast.info(a, { description: "Prototype form — connect backend to persist this record." })}
+                >
+                  {a}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-white/15">
+                <Bell className="size-5" />
+                {unread > 0 && (
+                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">
+                    {unread}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-md">
+              <SheetTitle className="px-4 pt-4">Notification centre</SheetTitle>
+              <div className="space-y-2 overflow-y-auto p-4">
+                {notifications.map((n) => (
+                  <div key={n.id} className="rounded-md border border-border bg-card p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <StatusBadge value={n.type} />
+                      <span className="text-[11px] text-muted-foreground">{fmtDateTime(n.at)}</span>
+                    </div>
+                    <p className="mt-1.5 text-sm font-semibold">{n.title}</p>
+                    <p className="text-xs text-muted-foreground">{n.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/15">
+                <span className="flex size-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
+                  {currentUser.name.split(" ").map((n) => n[0]).join("")}
+                </span>
+                <span className="hidden text-left leading-tight sm:block">
+                  <span className="block text-xs font-semibold">{currentUser.name}</span>
+                  <span className="block text-[11px] text-white/70">{currentUser.role}</span>
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>{currentUser.email}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/users-roles">Role &amp; permissions</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/audit-logs">My audit trail</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <button onClick={handleLogout} className="w-full text-left text-destructive flex items-center">
+                  <LogOut className="mr-2 size-4" /> Sign out
+                </button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </header>
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      </div>
+
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput
+          placeholder="Search all sidebar pages (e.g. Quotations, Attendance, Audit Logs) or records…"
+          value={q}
+          onValueChange={setQ}
+        />
+        <CommandList className="max-h-[380px] overflow-y-auto">
+          {matchingPages.length === 0 && hits.length === 0 && (
+            <CommandEmpty>No sidebar pages or records found for &ldquo;{q}&rdquo;.</CommandEmpty>
+          )}
+
+          {matchingPages.length > 0 && (
+            <CommandGroup heading={`Sidebar Pages (${matchingPages.length})`}>
+              {matchingPages.map((page) => {
+                const IconComponent = page.icon;
+                return (
+                  <CommandItem
+                    key={`nav-${page.href}`}
+                    value={`${page.label} ${page.group} ${page.href} page navigation`}
+                    onSelect={() => {
+                      setSearchOpen(false);
+                      setQ("");
+                      router.push(page.href);
+                    }}
+                    asChild
+                  >
+                    <Link
+                      href={page.href}
+                      onClick={() => {
+                        setSearchOpen(false);
+                        setQ("");
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition-colors hover:bg-accent/15"
+                    >
+                      {IconComponent ? <IconComponent className="size-4 text-primary shrink-0" /> : null}
+                      <span className="font-semibold text-sm text-foreground">{page.label}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {page.group}
+                        </span>
+                        <span className="font-mono text-[11px] text-muted-foreground/70 hidden sm:inline">
+                          {page.href}
+                        </span>
+                      </div>
+                    </Link>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          )}
+
+          {hits.length > 0 && (
+            <CommandGroup heading={`Business Records (${hits.length})`}>
+              {hits.map((h, idx) => (
+                <CommandItem
+                  key={`record-${h.kind}-${h.label}-${idx}`}
+                  value={`${h.label} ${h.sub} ${h.kind}`}
+                  onSelect={() => {
+                    setSearchOpen(false);
+                    setQ("");
+                    router.push(h.to || h.href || "/");
+                  }}
+                  asChild
+                >
+                  <Link
+                    href={h.to || h.href || "/"}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setQ("");
+                    }}
+                    className="flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition-colors hover:bg-accent/15"
+                  >
+                    <StatusBadge value={h.kind} />
+                    <span className="font-medium text-sm text-foreground">{h.label}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{h.sub}</span>
+                  </Link>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+        </CommandList>
+      </CommandDialog>
+    </div>
+  );
 }
 export {
   AppShell

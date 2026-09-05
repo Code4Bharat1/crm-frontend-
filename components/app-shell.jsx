@@ -282,7 +282,11 @@ function AppShell({ children }) {
     );
   }
 
-  const currentUser = user;
+  const currentUser = {
+    name: user?.name || user?.email?.split('@')[0] || "User",
+    email: user?.email || "",
+    role: user?.role || "Member"
+  };
 
   const hits = globalSearch(q);
   const unread = notifications.filter((n) => !n.read).length;

@@ -1,7 +1,18 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5245/api';
 
 const req = async (path, options = {}) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token = null;
+  if (typeof window !== 'undefined') {
+    token = localStorage.getItem('token');
+    if (!token) {
+      try {
+        const auth = JSON.parse(localStorage.getItem('crm_auth_data') || '{}');
+        token = auth?.token || null;
+      } catch {
+        token = null;
+      }
+    }
+  }
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }), ...options.headers },

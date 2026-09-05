@@ -272,7 +272,7 @@ export default function LeadsPage() {
                 <p>Loading leads...</p>
               ) : filteredLeads.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border p-8 text-center">
-                  <p className="text-sm text-muted-foreground">No leads found in the "{tab}" stage.</p>
+                  <p className="text-sm text-muted-foreground">No leads found in the &quot;{tab}&quot; stage.</p>
                   {tab === "Contacted" && (
                     <p className="mt-1 text-xs text-muted-foreground/80">
                       When you reply to a customer from Gmail or send a follow-up, their lead will automatically show up here.

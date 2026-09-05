@@ -5,7 +5,8 @@ import Link from "next/link";
 import {
   UserPlus, Flame, FileText, ClipboardList, Truck,
   IndianRupee, AlertTriangle, FolderKanban, BellRing,
-  Wrench, Boxes, TrendingUp, Bell, UserCheck, Sparkles, ArrowRight
+  Wrench, Boxes, TrendingUp, Bell, UserCheck, Sparkles, ArrowRight,
+  Users, Briefcase
 } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [liveProjects, setLiveProjects] = useState([]);
   const [liveNotifs, setLiveNotifs] = useState([]);
   const [techNotifs, setTechNotifs] = useState([]);
+  const [customerNotifs, setCustomerNotifs] = useState([]);
   const [assignmentTab, setAssignmentTab] = useState("technicians");
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -84,6 +86,19 @@ export default function Dashboard() {
           })
           .catch(() => {});
       }
+
+      // Anyone can be tagged as a Customer's salesperson, regardless of role
+      getNotifications({ type: "Customer", limit: 20 })
+        .then((res) => {
+          if (res?.notifications) {
+            const myNotifs = res.notifications.filter(n =>
+              (u.name && n.recipient?.toLowerCase().includes(u.name.toLowerCase())) ||
+              (u.email && n.recipientEmail?.toLowerCase() === u.email.toLowerCase())
+            );
+            setCustomerNotifs(myNotifs);
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -92,6 +107,7 @@ export default function Dashboard() {
       await markNotificationAsRead(id);
       setTechNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
       setLiveNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
+      setCustomerNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
       toast.success("Assignment acknowledged");
     } catch {
       toast.error("Failed to mark as read");
@@ -112,7 +128,21 @@ export default function Dashboard() {
     )
   );
 
-  const hasAssignedTasks = !isAdmin && (myTechAssignments.length > 0 || myProjectAssignments.length > 0);
+  const myCustomerAssignments = customerNotifs.filter(n =>
+    currentUser && (
+      n.recipient?.toLowerCase().includes(currentUser.name?.toLowerCase()) ||
+      (currentUser.email && n.recipientEmail?.toLowerCase() === currentUser.email.toLowerCase())
+    )
+  );
+
+  const hasAssignedTasks = !isAdmin && (myTechAssignments.length > 0 || myProjectAssignments.length > 0 || myCustomerAssignments.length > 0);
+
+  const activeCategories = [
+    myTechAssignments.length > 0 && "service",
+    myProjectAssignments.length > 0 && "projects",
+    myCustomerAssignments.length > 0 && "customers",
+  ].filter(Boolean);
+  const soleCategory = activeCategories.length === 1 ? activeCategories[0] : null;
 
   const overdueInvoices = invoices.filter((i) => i.status === "Overdue").slice(0, 5);
   const dueFollowUps = followUps
@@ -135,24 +165,29 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-200/80">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
-                {myTechAssignments.length > 0 ? <Wrench className="w-5 h-5" /> : <FolderKanban className="w-5 h-5" />}
+                {soleCategory === "service" ? <Wrench className="w-5 h-5" />
+                  : soleCategory === "customers" ? <Users className="w-5 h-5" />
+                  : soleCategory === "projects" ? <FolderKanban className="w-5 h-5" />
+                  : <Briefcase className="w-5 h-5" />}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-gray-900">
-                    {myTechAssignments.length > 0
-                      ? "My Assigned Service Tickets & Dispatch Alerts"
-                      : "My Assigned Projects & Execution Tasks"}
+                    {soleCategory === "service" ? "My Assigned Service Tickets & Dispatch Alerts"
+                      : soleCategory === "customers" ? "My Assigned Customers"
+                      : soleCategory === "projects" ? "My Assigned Projects & Execution Tasks"
+                      : "My Assigned Work"}
                   </h3>
                   <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center gap-1">
                     <Bell className="w-2.5 h-2.5" />
-                    {myTechAssignments.filter(n => !n.read).length + myProjectAssignments.filter(n => !n.read).length} New
+                    {myTechAssignments.filter(n => !n.read).length + myProjectAssignments.filter(n => !n.read).length + myCustomerAssignments.filter(n => !n.read).length} New
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {myTechAssignments.length > 0
-                    ? "Field service breakdown calls and maintenance visits officially assigned to you."
-                    : "Engineering and automation projects officially assigned to you for execution."}
+                  {soleCategory === "service" ? "Field service breakdown calls and maintenance visits officially assigned to you."
+                    : soleCategory === "customers" ? "Customer accounts where you are the assigned salesperson."
+                    : soleCategory === "projects" ? "Engineering and automation projects officially assigned to you for execution."
+                    : "Projects, service tickets, and customer accounts officially assigned to you."}
                 </p>
               </div>
             </div>
@@ -161,11 +196,13 @@ export default function Dashboard() {
               <Button size="sm" variant="outline" className="text-xs font-semibold bg-white hover:bg-blue-50 border-blue-200 text-blue-700" asChild>
                 <Link href="/notifications">Notification Centre</Link>
               </Button>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold" asChild>
-                <Link href={myTechAssignments.length > 0 ? "/service" : "/projects"}>
-                  {myTechAssignments.length > 0 ? "My Service Tickets" : "My Projects"}
-                </Link>
-              </Button>
+              {soleCategory && (
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold" asChild>
+                  <Link href={soleCategory === "service" ? "/service" : soleCategory === "customers" ? "/customers" : "/projects"}>
+                    {soleCategory === "service" ? "My Service Tickets" : soleCategory === "customers" ? "My Customers" : "My Projects"}
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -270,6 +307,53 @@ export default function Dashboard() {
                       className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
                     >
                       Open Execution ➔
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {myCustomerAssignments.map((notif) => (
+              <div
+                key={notif._id || notif.id}
+                className="bg-white rounded-xl p-4 border border-blue-100 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
+                        Assigned Salesperson: You
+                      </span>
+                      {!notif.read && (
+                        <span className="size-2 rounded-full bg-blue-600 animate-ping" />
+                      )}
+                    </div>
+                    <span className="text-[11px] text-gray-400">
+                      {new Date(notif.at || notif.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{notif.detail}</p>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-mono font-medium text-gray-500">
+                    {notif.customerName ? `Client: ${notif.customerName}` : "Customer Account"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {!notif.read && (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkNotifRead(notif._id || notif.id)}
+                        className="text-[11px] text-gray-500 hover:text-gray-800 underline"
+                      >
+                        Mark as Read
+                      </button>
+                    )}
+                    <Link
+                      href={notif.link || "/customers"}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+                    >
+                      Open Customer ➔
                     </Link>
                   </div>
                 </div>

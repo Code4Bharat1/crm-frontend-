@@ -103,6 +103,8 @@ export default function SalesPerformancePage() {
     totalLeads: 0,
     totalWonLeads: 0,
     totalQuotations: 0,
+    totalConfirmedQuotations: 0,
+    totalConfirmedQuotationAmount: 0
   };
 
   const salespeople = data?.salespeople || [];
@@ -150,6 +152,7 @@ export default function SalesPerformancePage() {
         <Kpi 
           label="Total achieved" 
           value={inrShort(summary.totalAchieved)} 
+          sub={`${summary.totalConfirmedQuotations || 0} approved quotes`}
           tone={summary.totalAchieved >= summary.totalTarget ? "success" : "default"} 
           icon={TrendingUp}
         />
@@ -231,12 +234,28 @@ export default function SalesPerformancePage() {
                       </p>
                     </div>
 
-                    {/* 2. Achieved */}
-                    <Metric 
-                      label="Achieved" 
-                      value={inrShort(s.achieved ?? 0)} 
-                      tone={pct >= 100 ? "good" : pct >= 50 ? "default" : "bad"} 
-                    />
+                    {/* 2. Achieved - Driven by Quotation Amount */}
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Achieved</p>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                          (s.confirmedQuotations ?? 0) > 0 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : (s.quotations ?? 0) > 0
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-muted text-muted-foreground border-border"
+                        }`}>
+                          {(s.confirmedQuotations ?? 0) > 0 
+                            ? `${s.confirmedQuotations} Approved Quote${(s.confirmedQuotations ?? 0) === 1 ? "" : "s"}` 
+                            : (s.quotations ?? 0) > 0
+                            ? "Quotation Amount"
+                            : "0 Quotes"}
+                        </span>
+                      </div>
+                      <p className="font-display text-lg font-bold text-foreground mt-0.5">
+                        {inrShort(s.achieved ?? 0)}
+                      </p>
+                    </div>
 
                     {/* 3. Won Leads */}
                     <div className="rounded-md border border-border bg-muted/40 px-3 py-2 flex flex-col justify-between">
@@ -264,7 +283,7 @@ export default function SalesPerformancePage() {
                       <strong className="text-foreground font-semibold">{s.wonLeads ?? 0} won</strong> out of {s.leads ?? 0} assigned leads ({s.leads > 0 ? Math.round(((s.wonLeads ?? 0) / s.leads) * 100) : 0}% conversion)
                     </span>
                     <span className="font-semibold text-foreground">
-                      {s.quotations ?? 0} quotations ({inrShort(s.quotationValue ?? 0)})
+                      <strong className="text-emerald-600 font-semibold">{s.confirmedQuotations ?? 0} confirmed</strong> / {s.quotations ?? 0} quotations ({inrShort(s.quotationValue ?? 0)})
                     </span>
                   </div>
                 </Section>
@@ -290,7 +309,7 @@ export default function SalesPerformancePage() {
                         <div>
                           <span className="font-semibold text-sm text-foreground">{s.name}</span>
                           <span className="ml-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-emerald-600">{s.wonLeads} won leads</span> · {s.leads} total leads · {s.quotations} quotations
+                            <span className="font-semibold text-emerald-600">{s.wonLeads} won leads</span> · <span className="font-semibold text-emerald-700">{s.confirmedQuotations ?? 0} confirmed quotes</span> · {s.leads} total leads · {s.quotations} quotations ({inrShort(s.quotationValue || 0)})
                           </span>
                         </div>
                       </div>
@@ -329,6 +348,7 @@ export default function SalesPerformancePage() {
           </div>
         </>
       )}
+
 
       {/* Target Setting Modal for Admin and Manager */}
       <Dialog open={targetDialogOpen} onOpenChange={setTargetDialogOpen}>

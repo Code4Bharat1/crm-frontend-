@@ -26,6 +26,17 @@ export const getCompany = () => req('/company');
 export const updateCompany = (data) => req('/company', { method: 'PUT', body: JSON.stringify(data) });
 export const uploadCompanyMedia = (data) => req('/company/upload', { method: 'POST', body: JSON.stringify(data) });
 
+// ─── Salespeople (Real Active Only) ──────────────────────────────────────────
+export const getSalespeople = async () => {
+  try {
+    const res = await req('/sales/salespeople');
+    return res?.data || (Array.isArray(res) ? res : []);
+  } catch {
+    const perf = await req('/sales/performance').catch(() => null);
+    return perf?.data?.salespeople || perf?.salespeople || [];
+  }
+};
+
 // ─── Customers ──────────────────────────────────────────────────────────────
 export const getCustomers = (params = {}) => req('/customers?' + new URLSearchParams(params));
 export const getCustomer = (id) => req(`/customers/${id}`);

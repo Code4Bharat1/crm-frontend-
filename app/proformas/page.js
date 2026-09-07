@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   getProformas, createProforma, updateProforma, deleteProforma,
   recordProformaAdvance, convertProformaToSO,
-  calcItem, calcTotals, getCompany, fmtINR, fmtDate
+  calcItem, calcTotals, getCompany, getSalespeople, fmtINR, fmtDate
 } from "@/services/documentService";
 import { fetchApi } from "@/services/api";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
@@ -24,6 +24,7 @@ export default function ProformasPage() {
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [salespeople, setSalespeople] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -38,14 +39,16 @@ export default function ProformasPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [pi, c, cust] = await Promise.all([
+      const [pi, c, cust, sp] = await Promise.all([
         getProformas(),
         getCompany().catch(() => null),
-        fetchApi('/customers').catch(() => [])
+        fetchApi('/customers').catch(() => []),
+        getSalespeople().catch(() => []),
       ]);
       setProformas(pi);
       setCompany(c);
       setCustomers(Array.isArray(cust) ? cust : []);
+      setSalespeople(Array.isArray(sp) ? sp : []);
     } catch { /**/ }
     setLoading(false);
   }, []);
@@ -292,8 +295,32 @@ export default function ProformasPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Salesperson</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.salesperson || ""} onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))} />
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">
+                    Salesperson <span className="text-gray-400 font-normal">(Sales Team Only)</span>
+                  </label>
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={form.salesperson || ""}
+                    onChange={e => setForm(f => ({ ...f, salesperson: e.target.value }))}
+                  >
+                    <option value="">
+                      {salespeople.length > 0 ? "-- Select Real Salesperson --" : "No sales team found"}
+                    </option>
+                    {salespeople.map(sp => {
+                      const spName = sp.name || sp.fullName;
+                      const spCode = sp.code || sp.employeeCode || "Sales";
+                      return (
+                        <option key={sp.id || sp._id || spCode || spName} value={spName}>
+                          {spName} ({spCode} - {sp.role || sp.department || "Sales"})
+                        </option>
+                      );
+                    })}
+                    {form.salesperson && !salespeople.some(sp => (sp.name || sp.fullName)?.toLowerCase() === form.salesperson?.toLowerCase()) && (
+                      <option value={form.salesperson}>
+                        {form.salesperson} (Assigned)
+                      </option>
+                    )}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Valid Until</label>

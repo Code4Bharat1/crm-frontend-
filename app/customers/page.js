@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from "@/services/documentService";
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer, getSalespeople } from "@/services/documentService";
 import { getEmployees } from "@/services/employeeService";
 import { DataTable, Kpi, PageHeader, StatusBadge, Field } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
@@ -63,8 +63,20 @@ export default function CustomersPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    getEmployees({ limit: 100 })
-      .then((res) => setEmployees(res?.data?.employees || res?.employees || (Array.isArray(res) ? res : [])))
+    getSalespeople()
+      .then((sp) => {
+        if (Array.isArray(sp) && sp.length > 0) {
+          setEmployees(sp.map(s => ({ _id: s.id || s._id, fullName: s.name || s.fullName, role: s.role || 'Sales' })));
+        } else {
+          getEmployees({ limit: 100 })
+            .then((res) => {
+              const all = res?.data?.employees || res?.employees || (Array.isArray(res) ? res : []);
+              const salesOnly = all.filter(e => /sales/i.test(e.role || '') || /sales/i.test(e.department || ''));
+              setEmployees(salesOnly.length > 0 ? salesOnly : all);
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
   }, []);
 

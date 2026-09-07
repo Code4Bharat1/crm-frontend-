@@ -87,6 +87,15 @@ export const deleteInvoice = (id) => req(`/invoices/${id}`, { method: 'DELETE' }
 export const recordPayment = (id, data) => req(`/invoices/${id}/record-payment`, { method: 'POST', body: JSON.stringify(data) });
 export const getPaymentsLedger = () => req('/invoices/payments-ledger');
 
+// ─── Bank Reconciliation ─────────────────────────────────────────────────────
+export const getBankStatus = () => req('/bank/status');
+export const getBankTransactions = (params = {}) => req('/bank/transactions?' + new URLSearchParams(params));
+export const addBankTransaction = (data) => req('/bank/transactions', { method: 'POST', body: JSON.stringify(data) });
+export const syncHdfcTransactions = () => req('/bank/sync', { method: 'POST' });
+export const reconcileTransaction = (id, data = {}) => req(`/bank/transactions/${id}/reconcile`, { method: 'POST', body: JSON.stringify(data) });
+export const dismissTransaction = (id) => req(`/bank/transactions/${id}/dismiss`, { method: 'POST' });
+export const deleteBankTransaction = (id) => req(`/bank/transactions/${id}`, { method: 'DELETE' });
+
 // ─── Purchase Orders ─────────────────────────────────────────────────────────
 export const getPurchaseOrders = (params = {}) => req('/purchase-orders?' + new URLSearchParams(params));
 export const getPurchaseOrder = (id) => req(`/purchase-orders/${id}`);

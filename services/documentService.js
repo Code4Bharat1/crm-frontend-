@@ -107,6 +107,18 @@ export const reconcileTransaction = (id, data = {}) => req(`/bank/transactions/$
 export const dismissTransaction = (id) => req(`/bank/transactions/${id}/dismiss`, { method: 'POST' });
 export const deleteBankTransaction = (id) => req(`/bank/transactions/${id}`, { method: 'DELETE' });
 
+// ─── Follow-ups ──────────────────────────────────────────────────────────────
+export const getFollowUps = (params = {}) => req('/follow-ups?' + new URLSearchParams(params));
+export const getFollowUpStats = () => req('/follow-ups/stats');
+export const syncFollowUps = () => req('/follow-ups/generate', { method: 'POST' });
+export const createFollowUp = (data) => req('/follow-ups', { method: 'POST', body: JSON.stringify(data) });
+export const updateFollowUp = (id, data) => req(`/follow-ups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteFollowUp = (id) => req(`/follow-ups/${id}`, { method: 'DELETE' });
+
+// ─── Reports ─────────────────────────────────────────────────────────────────
+export const getProductSalesReport = () => req('/reports/product-sales');
+export const getQuotationConversionReport = () => req('/reports/quotation-conversion');
+
 // ─── Purchase Orders ─────────────────────────────────────────────────────────
 export const getPurchaseOrders = (params = {}) => req('/purchase-orders?' + new URLSearchParams(params));
 export const getPurchaseOrder = (id) => req(`/purchase-orders/${id}`);

@@ -6,7 +6,7 @@ import {
   UserPlus, Flame, FileText, ClipboardList, Truck,
   IndianRupee, AlertTriangle, FolderKanban, BellRing,
   Wrench, Boxes, TrendingUp, Bell, UserCheck, Sparkles, ArrowRight,
-  Users, Briefcase, RotateCw, Activity
+  Users, Briefcase, RotateCw, Activity, Check, CheckCheck
 } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
@@ -17,7 +17,7 @@ import { ChainStrip, FilterBar, Kpi, PageHeader, Section, StatusBadge, Timeline 
 import { Button } from "@/components/ui/button";
 import { fmtDate, inrShort } from "@/lib/crm-data";
 import { AttendanceWidget } from "@/components/AttendanceWidget";
-import { getNotifications, markNotificationAsRead } from "@/services/notificationService";
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/services/notificationService";
 import { getUser } from "@/lib/authUtils";
 import { getDashboardOverview } from "@/lib/api";
 import { toast } from "sonner";
@@ -34,20 +34,34 @@ const tooltipStyle = {
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
-  const [liveProjects, setLiveProjects] = useState([]);
-  const [liveNotifs, setLiveNotifs] = useState([]);
-  const [techNotifs, setTechNotifs] = useState([]);
-  const [customerNotifs, setCustomerNotifs] = useState([]);
-  const [assignmentTab, setAssignmentTab] = useState("technicians");
+  const [notifications, setNotifications] = useState([]);
+  const [markingAll, setMarkingAll] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const res = await getNotifications({ limit: 40, unread: "true" });
+      if (res?.notifications) {
+        setNotifications(res.notifications);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  }, []);
 
   const fetchDashboard = useCallback(async () => {
     try {
       setLoadingDashboard(true);
-      const res = await getDashboardOverview();
-      if (res?.success && res?.data) {
-        setDashboardData(res.data);
+      const [dashRes, notifRes] = await Promise.allSettled([
+        getDashboardOverview(),
+        getNotifications({ limit: 40, unread: "true" })
+      ]);
+      if (dashRes.status === "fulfilled" && dashRes.value?.success && dashRes.value?.data) {
+        setDashboardData(dashRes.value.data);
+      }
+      if (notifRes.status === "fulfilled" && notifRes.value?.notifications) {
+        setNotifications(notifRes.value.notifications);
       }
     } catch (err) {
       console.error("Failed to load real dashboard data:", err);
@@ -66,104 +80,50 @@ export default function Dashboard() {
     setCurrentUser(u);
     const r = (u?.role || '').toLowerCase().trim();
     const admin = r === 'admin' || r === 'director' || r === 'admin manager';
-    const tech = r.includes('technician');
-    const pm = r.includes('manager') && !admin;
     setIsAdmin(admin);
 
-    if (tech) setAssignmentTab("technicians");
-    else if (pm) setAssignmentTab("managers");
-
-    // Fetch real assignment notifications
-    if (admin) {
-      // Admins see high-priority active field service, project, and customer dispatches
-      getNotifications({ type: "Service", limit: 6 }).then(res => setTechNotifs(res?.notifications || [])).catch(() => {});
-      getNotifications({ type: "Project", limit: 6 }).then(res => setLiveNotifs(res?.notifications || [])).catch(() => {});
-      getNotifications({ type: "Customer", limit: 6 }).then(res => setCustomerNotifs(res?.notifications || [])).catch(() => {});
-    } else if (u) {
-      if (tech) {
-        getNotifications({ type: "Service", limit: 20 })
-          .then((res) => {
-            if (res?.notifications) {
-              const myNotifs = res.notifications.filter(n =>
-                (u.name && n.recipient?.toLowerCase().includes(u.name.toLowerCase())) ||
-                (u.email && n.recipientEmail?.toLowerCase() === u.email.toLowerCase())
-              );
-              setTechNotifs(myNotifs);
-            }
-          })
-          .catch(() => {});
-      }
-
-      if (pm || !tech) {
-        getNotifications({ type: "Project", limit: 20 })
-          .then((res) => {
-            if (res?.notifications) {
-              const myNotifs = res.notifications.filter(n =>
-                (u.name && n.recipient?.toLowerCase().includes(u.name.toLowerCase())) ||
-                (u.email && n.recipientEmail?.toLowerCase() === u.email.toLowerCase())
-              );
-              setLiveNotifs(myNotifs);
-            }
-          })
-          .catch(() => {});
-      }
-
-      // Anyone can be tagged as a Customer's salesperson, regardless of role
-      getNotifications({ type: "Customer", limit: 20 })
-        .then((res) => {
-          if (res?.notifications) {
-            const myNotifs = res.notifications.filter(n =>
-              (u.name && n.recipient?.toLowerCase().includes(u.name.toLowerCase())) ||
-              (u.email && n.recipientEmail?.toLowerCase() === u.email.toLowerCase())
-            );
-            setCustomerNotifs(myNotifs);
-          }
-        })
-        .catch(() => {});
-    }
-  }, []);
+    loadNotifications();
+  }, [loadNotifications]);
 
   const handleMarkNotifRead = async (id) => {
     try {
       await markNotificationAsRead(id);
-      setTechNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
-      setLiveNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
-      setCustomerNotifs(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
-      toast.success("Assignment acknowledged");
+      // Immediately set read to true so it disappears from the dashboard
+      setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
+      toast.success("Notification marked as read");
     } catch {
       toast.error("Failed to mark as read");
     }
   };
 
-  const myTechAssignments = isAdmin ? techNotifs : techNotifs.filter(n =>
-    currentUser && (
-      n.recipient?.toLowerCase().includes(currentUser.name?.toLowerCase()) ||
-      (currentUser.email && n.recipientEmail?.toLowerCase() === currentUser.email.toLowerCase())
-    )
-  );
+  const handleMarkAllNotifsRead = async () => {
+    try {
+      setMarkingAll(true);
+      await markAllNotificationsAsRead(isAdmin ? undefined : currentUser?.name);
+      // Mark all in local state as read so they immediately disappear
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      toast.success("All notifications marked as read");
+    } catch {
+      toast.error("Failed to mark all notifications as read");
+    } finally {
+      setMarkingAll(false);
+    }
+  };
 
-  const myProjectAssignments = isAdmin ? liveNotifs : liveNotifs.filter(n =>
-    currentUser && (
-      n.recipient?.toLowerCase().includes(currentUser.name?.toLowerCase()) ||
-      (currentUser.email && n.recipientEmail?.toLowerCase() === currentUser.email.toLowerCase())
-    )
-  );
+  // Strictly filter for unread notifications, scoped to recipient (for non-admins), sorted newest first
+  const unreadNotifications = notifications
+    .filter(n => !n.read)
+    .filter(n => {
+      if (isAdmin || !currentUser) return true;
+      const nameMatch = currentUser.name && n.recipient?.toLowerCase().includes(currentUser.name.toLowerCase());
+      const emailMatch = currentUser.email && n.recipientEmail?.toLowerCase() === currentUser.email.toLowerCase();
+      const allMatch = n.recipient === 'all';
+      return nameMatch || emailMatch || allMatch;
+    })
+    .sort((a, b) => new Date(b.at || b.createdAt || 0) - new Date(a.at || a.createdAt || 0));
 
-  const myCustomerAssignments = isAdmin ? customerNotifs : customerNotifs.filter(n =>
-    currentUser && (
-      n.recipient?.toLowerCase().includes(currentUser.name?.toLowerCase()) ||
-      (currentUser.email && n.recipientEmail?.toLowerCase() === currentUser.email.toLowerCase())
-    )
-  );
-
-  const hasAssignedTasks = (myTechAssignments.length > 0 || myProjectAssignments.length > 0 || myCustomerAssignments.length > 0);
-
-  const activeCategories = [
-    myTechAssignments.length > 0 && "service",
-    myProjectAssignments.length > 0 && "projects",
-    myCustomerAssignments.length > 0 && "customers",
-  ].filter(Boolean);
-  const soleCategory = activeCategories.length === 1 ? activeCategories[0] : null;
+  // Strictly show latest 4 unread notifications on the dashboard
+  const displayedNotifs = unreadNotifications.slice(0, 4);
 
   // Real data references
   const kpis = dashboardData?.kpis || {
@@ -242,208 +202,160 @@ export default function Dashboard() {
 
       {!isAdmin && <AttendanceWidget />}
 
-      {/* ─── PERSONAL WORK ASSIGNMENTS & DISPATCH ALERTS (ASSIGNED EMPLOYEE DASHBOARD ONLY) ─── */}
-      {hasAssignedTasks && (
-        <div className="mt-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-blue-50/70 p-4 sm:p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-200/80">
+      {/* ─── COMPACT LATEST NOTIFICATIONS FEED (MAX 4, UNREAD ONLY, NOT CARDS) ─── */}
+      {displayedNotifs.length > 0 && (
+        <div className="mt-4 rounded-xl border border-blue-200/80 bg-white/95 dark:bg-card/95 shadow-xs overflow-hidden">
+          {/* Sleek Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-blue-50/80 dark:from-blue-950/30 dark:to-indigo-950/20 border-b border-blue-100/80">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
-                {soleCategory === "service" ? <Wrench className="w-5 h-5" />
-                  : soleCategory === "customers" ? <Users className="w-5 h-5" />
-                  : soleCategory === "projects" ? <FolderKanban className="w-5 h-5" />
-                  : <Briefcase className="w-5 h-5" />}
+              <div className="p-2 bg-blue-600 text-white rounded-lg shadow-2xs">
+                <Bell className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-gray-900">
-                    {isAdmin ? "Active Operational Dispatches & Team Assignments"
-                      : soleCategory === "service" ? "My Assigned Service Tickets & Dispatch Alerts"
-                      : soleCategory === "customers" ? "My Assigned Customers"
-                      : soleCategory === "projects" ? "My Assigned Projects & Execution Tasks"
-                      : "My Assigned Work"}
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    {isAdmin ? "Active Operational Dispatches & Team Assignments" : "My Work Assignments & Dispatches"}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center gap-1">
-                    <Bell className="w-2.5 h-2.5" />
-                    {myTechAssignments.filter(n => !n.read).length + myProjectAssignments.filter(n => !n.read).length + myCustomerAssignments.filter(n => !n.read).length} New
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                    {unreadNotifications.length} New
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {isAdmin ? "Company-wide active field service breakdown calls, project engineering tasks, and key customer accounts."
-                    : soleCategory === "service" ? "Field service breakdown calls and maintenance visits officially assigned to you."
-                    : soleCategory === "customers" ? "Customer accounts where you are the assigned salesperson."
-                    : soleCategory === "projects" ? "Engineering and automation projects officially assigned to you for execution."
-                    : "Projects, service tickets, and customer accounts officially assigned to you."}
+                <p className="text-xs text-muted-foreground">
+                  Showing latest {displayedNotifs.length} unread updates
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="text-xs font-semibold bg-white hover:bg-blue-50 border-blue-200 text-blue-700" asChild>
-                <Link href="/notifications">Notification Centre</Link>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleMarkAllNotifsRead}
+                disabled={markingAll}
+                className="h-8 px-3 text-xs font-semibold bg-white hover:bg-blue-50 text-blue-700 border-blue-200 shadow-2xs cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCheck className="w-3.5 h-3.5 text-blue-600" />
+                <span>{markingAll ? "Marking..." : "Mark all as read"}</span>
               </Button>
-              {soleCategory && (
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold" asChild>
-                  <Link href={soleCategory === "service" ? "/service" : soleCategory === "customers" ? "/customers" : "/projects"}>
-                    {soleCategory === "service" ? "My Service Tickets" : soleCategory === "customers" ? "My Customers" : "My Projects"}
-                  </Link>
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                asChild
+                className="h-8 px-2.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/50"
+              >
+                <Link href="/notifications">
+                  Notification Centre ➔
+                </Link>
+              </Button>
             </div>
           </div>
 
-          {/* Assigned Items Grid */}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {myTechAssignments.map((notif) => {
-              const isUrgent = notif.severity === "danger" || notif.detail?.includes("Urgent");
+          {/* Compact Horizontal List (NOT CARDS) */}
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {displayedNotifs.map((notif) => {
+              const isUrgent = notif.severity === "danger" || notif.detail?.includes("Urgent") || notif.title?.includes("Emergency");
+              const notifType = notif.type || (notif.title?.includes("Service") ? "Service" : notif.title?.includes("Project") ? "Project" : "Customer");
+
+              let IconComp = Bell;
+              let badgeColor = "bg-blue-100 text-blue-800 border-blue-200";
+              let defaultLink = notif.link || "/notifications";
+              let actionLabel = "Open Details";
+
+              if (notifType === "Service" || notif.title?.includes("Service") || notif.title?.includes("Breakdown")) {
+                IconComp = Wrench;
+                badgeColor = "bg-amber-100 text-amber-800 border-amber-200";
+                defaultLink = notif.link || "/service";
+                actionLabel = "Open Ticket";
+              } else if (notifType === "Project" || notif.title?.includes("Project") || notif.title?.includes("Milestone")) {
+                IconComp = FolderKanban;
+                badgeColor = "bg-indigo-100 text-indigo-800 border-indigo-200";
+                defaultLink = notif.link || "/projects";
+                actionLabel = "Open Execution";
+              } else if (notifType === "Customer" || notif.title?.includes("Customer") || notif.title?.includes("Key Account")) {
+                IconComp = Users;
+                badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                defaultLink = notif.link || "/customers";
+                actionLabel = "Open Customer";
+              }
+
+              const notifDate = notif.at || notif.createdAt;
+              const formattedDate = notifDate
+                ? new Date(notifDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+                : "";
+
               return (
                 <div
                   key={notif._id || notif.id}
-                  className={`bg-white rounded-xl p-4 border shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between ${
-                    isUrgent ? "border-red-300 ring-1 ring-red-200" : "border-blue-100"
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-blue-50/40 dark:hover:bg-accent/40 ${
+                    isUrgent ? "bg-red-50/30 dark:bg-red-950/10" : ""
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold flex items-center gap-1">
-                          <UserCheck className="w-3 h-3 text-blue-600" />
-                          {isAdmin ? `Assigned: ${notif.recipient || "Technician"}` : "Assigned to You"}
+                  {/* Left: Icon + Text Content */}
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                    <div
+                      className={`p-2 rounded-lg shrink-0 border ${
+                        isUrgent
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : badgeColor
+                      }`}
+                    >
+                      <IconComp className="w-4 h-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">
+                          {notif.title}
                         </span>
                         {isUrgent && (
                           <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[9px] font-extrabold uppercase animate-pulse">
                             Urgent
                           </span>
                         )}
-                        {!notif.read && (
-                          <span className="size-2 rounded-full bg-blue-600 animate-ping" />
+                        {notif.recipient && (
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            • {isAdmin ? `Assigned: ${notif.recipient}` : "Assigned to You"}
+                          </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-gray-400 font-mono">
-                        {new Date(notif.at || notif.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{notif.detail}</p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-medium text-gray-500">
-                      {notif.customerName ? `Client: ${notif.customerName}` : "Field Service"}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {!notif.read && (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkNotifRead(notif._id || notif.id)}
-                          className="text-[11px] text-gray-500 hover:text-gray-800 underline cursor-pointer"
-                        >
-                          Mark as Read
-                        </button>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1">
+                        {notif.detail}
+                      </p>
+                      {notif.customerName && (
+                        <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                          Client: <span className="text-gray-700 dark:text-gray-300 font-semibold">{notif.customerName}</span>
+                        </p>
                       )}
-                      <Link
-                        href={notif.link || "/service"}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
-                      >
-                        Open Ticket ➔
-                      </Link>
                     </div>
+                  </div>
+
+                  {/* Right: Date + Action Buttons */}
+                  <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                    {formattedDate && (
+                      <span className="text-[11px] text-gray-400 font-mono">
+                        {formattedDate}
+                      </span>
+                    )}
+                    <Link
+                      href={defaultLink}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline px-1.5 py-1"
+                    >
+                      <span>{actionLabel}</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleMarkNotifRead(notif._id || notif.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-neutral-800 border border-gray-200 dark:border-border transition-all cursor-pointer shadow-2xs"
+                      title="Mark this notification as read"
+                    >
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span>Mark read</span>
+                    </button>
                   </div>
                 </div>
               );
             })}
-
-            {myProjectAssignments.map((notif) => (
-              <div
-                key={notif._id || notif.id}
-                className="bg-white rounded-xl p-4 border border-blue-100 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
-                        Assigned Project Manager: You
-                      </span>
-                      {!notif.read && (
-                        <span className="size-2 rounded-full bg-blue-600 animate-ping" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-gray-400">
-                      {new Date(notif.at || notif.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{notif.detail}</p>
-                </div>
-                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-mono font-medium text-gray-500">
-                    {notif.customerName ? `Client: ${notif.customerName}` : "Project Delivery"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {!notif.read && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkNotifRead(notif._id || notif.id)}
-                        className="text-[11px] text-gray-500 hover:text-gray-800 underline cursor-pointer"
-                      >
-                        Mark as Read
-                      </button>
-                    )}
-                    <Link
-                      href={notif.link || "/projects"}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
-                    >
-                      Open Execution ➔
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {myCustomerAssignments.map((notif) => (
-              <div
-                key={notif._id || notif.id}
-                className="bg-white rounded-xl p-4 border border-blue-100 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md text-[10px] font-bold">
-                        Assigned Salesperson: You
-                      </span>
-                      {!notif.read && (
-                        <span className="size-2 rounded-full bg-blue-600 animate-ping" />
-                      )}
-                    </div>
-                    <span className="text-[11px] text-gray-400">
-                      {new Date(notif.at || notif.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-gray-900">{notif.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{notif.detail}</p>
-                </div>
-                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-mono font-medium text-gray-500">
-                    {notif.customerName ? `Client: ${notif.customerName}` : "Customer Account"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {!notif.read && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkNotifRead(notif._id || notif.id)}
-                        className="text-[11px] text-gray-500 hover:text-gray-800 underline cursor-pointer"
-                      >
-                        Mark as Read
-                      </button>
-                    )}
-                    <Link
-                      href={notif.link || "/customers"}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
-                    >
-                      Open Customer ➔
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

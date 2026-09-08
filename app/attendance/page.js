@@ -395,18 +395,7 @@ export default function Page() {
             : "Clock in and clock out for your daily shifts, track personal attendance, and view your overtime hours."} 
         />
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSyncEss}
-              disabled={syncing}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-white shadow-sm border-gray-200"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin text-blue-600" : "text-gray-600"}`} />
-              {syncing ? "Syncing..." : "Sync ESS Biometric"}
-            </Button>
-          )}
+         
 
           <Button
             variant="outline"

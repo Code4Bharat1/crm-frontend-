@@ -333,50 +333,51 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
                 {company?.signatureText || "For Nexcore Alliance Pvt. Ltd."}
               </div>
 
-              {/* Stamp & Signature container */}
+              {/* Stamp & Signature container (Side-by-side, no overlapping) */}
               <div style={{
-                position: "relative",
                 minHeight: "75px",
-                width: "200px",
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-end",
                 justifyContent: "center",
-                marginBottom: "4px"
+                gap: "16px",
+                marginBottom: "6px",
+                width: "100%",
+                maxWidth: "260px"
               }}>
                 {company?.stampUrl && (
-                  <img
-                    src={resolveMediaUrl(company.stampUrl)}
-                    alt="Official Stamp"
-                    style={{
-                      maxHeight: "70px",
-                      maxWidth: "110px",
-                      objectFit: "contain",
-                      opacity: 0.88,
-                      position: company?.signatureUrl ? "absolute" : "relative",
-                      right: company?.signatureUrl ? "50px" : "auto",
-                      pointerEvents: "none"
-                    }}
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                    <img
+                      src={resolveMediaUrl(company.stampUrl)}
+                      alt="Official Stamp"
+                      style={{
+                        maxHeight: "65px",
+                        maxWidth: "95px",
+                        objectFit: "contain",
+                        display: "block"
+                      }}
+                    />
+                  </div>
                 )}
                 {company?.signatureUrl && (
-                  <img
-                    src={resolveMediaUrl(company.signatureUrl)}
-                    alt="Authorised Signature"
-                    style={{
-                      maxHeight: "55px",
-                      maxWidth: "140px",
-                      objectFit: "contain",
-                      zIndex: 1,
-                      position: "relative"
-                    }}
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}>
+                    <img
+                      src={resolveMediaUrl(company.signatureUrl)}
+                      alt="Authorised Signature"
+                      style={{
+                        maxHeight: "55px",
+                        maxWidth: "135px",
+                        objectFit: "contain",
+                        display: "block"
+                      }}
+                    />
+                  </div>
                 )}
                 {!company?.stampUrl && !company?.signatureUrl && (
                   <div style={{ height: "45px" }} />
                 )}
               </div>
 
-              <div style={{ borderTop: "1px solid #94a3b8", paddingTop: "5px", width: "190px", textAlign: "center" }}>
+              <div style={{ borderTop: "1px solid #94a3b8", paddingTop: "5px", width: "100%", maxWidth: "260px", textAlign: "center" }}>
                 <div style={{ fontSize: "10px", fontWeight: "700", color: "#1e293b" }}>Authorised Signatory</div>
               </div>
             </div>

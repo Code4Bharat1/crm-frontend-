@@ -46,9 +46,40 @@ export default function PurchaseOrdersPage() {
   const totals = calcTotals(form.items, form.isInterState);
 
   const handleSupplierSelect = (supId) => {
-    const s = suppliers.find(s => s._id === supId || s.id === supId);
+    if (!supId) {
+      setForm(f => ({
+        ...f,
+        supplier: { id: "", name: "", address: "", gstNumber: "", contactPerson: "", email: "", phone: "" }
+      }));
+      return;
+    }
+    const s = suppliers.find(s => s._id === supId || s.id === supId || s.name === supId);
     if (!s) return;
-    setForm(f => ({ ...f, supplier: { id: s._id || s.id, name: s.name, address: [s.address?.street, s.address?.city, s.address?.state, s.address?.pinCode].filter(Boolean).join(", "), gstNumber: s.gstNumber || "", contactPerson: s.contactPerson || "", email: s.email || "", phone: s.phone || "" } }));
+
+    // Detect if inter-state (IGST vs CGST+SGST) based on supplier's state
+    const supplierState = (s.address?.state || "").toLowerCase().trim();
+    const isInterState = supplierState ? supplierState !== "maharashtra" : form.isInterState;
+
+    const fullAddress = [s.address?.street, s.address?.city, s.address?.state, s.address?.pinCode]
+      .filter(Boolean)
+      .join(", ");
+
+    setForm(f => ({
+      ...f,
+      isInterState,
+      paymentTerms: s.paymentTerms || f.paymentTerms || "30 Days Net",
+      supplier: {
+        id: s._id || s.id,
+        name: s.name,
+        address: fullAddress,
+        gstNumber: s.gstNumber || "",
+        contactPerson: s.contactPerson || "",
+        email: s.email || "",
+        phone: s.phone || "",
+        state: s.address?.state || ""
+      },
+      items: recalc(f.items, isInterState)
+    }));
   };
 
   const handleSave = async () => {
@@ -112,14 +143,55 @@ export default function PurchaseOrdersPage() {
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Supplier *</label>
-                  {suppliers.length > 0 ? (
-                    <select className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none" onChange={e => handleSupplierSelect(e.target.value)} defaultValue="">
-                      <option value="">Select supplier…</option>
-                      {suppliers.map(s => <option key={s._id || s.id} value={s._id || s.id}>{s.name}</option>)}
-                    </select>
-                  ) : (
-                    <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.supplier.name} onChange={e => setForm(f => ({ ...f, supplier: { ...f.supplier, name: e.target.value } }))} placeholder="Supplier name" />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-500">Supplier *</label>
+                    <Link
+                      href="/suppliers"
+                      target="_blank"
+                      className="text-[11px] text-cyan-700 font-semibold hover:underline"
+                    >
+                      + Manage Suppliers
+                    </Link>
+                  </div>
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none bg-white font-medium text-gray-900"
+                    value={form.supplier?.id || suppliers.find(s => s.name === form.supplier?.name)?._id || ""}
+                    onChange={e => handleSupplierSelect(e.target.value)}
+                  >
+                    <option value="">
+                      {suppliers.length > 0 ? "Select supplier to auto-fill details…" : "Loading suppliers…"}
+                    </option>
+                    {suppliers.map(s => (
+                      <option key={s._id || s.id} value={s._id || s.id}>
+                        {s.name} ({s.supplierCode || "SUP"} · {s.address?.city || "India"})
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Auto-fetched supplier details preview card */}
+                  {form.supplier?.name && (
+                    <div className="mt-2 rounded-lg border border-cyan-200 bg-cyan-50/70 p-2.5 text-xs text-gray-700 shadow-2xs">
+                      <div className="flex items-center justify-between font-bold text-cyan-900">
+                        <span>{form.supplier.name}</span>
+                        {form.supplier.gstNumber && (
+                          <span className="font-mono text-[10px] bg-white px-1.5 py-0.5 rounded border border-cyan-300">
+                            GSTIN: {form.supplier.gstNumber}
+                          </span>
+                        )}
+                      </div>
+                      {(form.supplier.contactPerson || form.supplier.phone || form.supplier.email) && (
+                        <div className="mt-1 text-gray-600 text-[11px]">
+                          {form.supplier.contactPerson && <span className="font-medium text-gray-800">Attn: {form.supplier.contactPerson}</span>}
+                          {form.supplier.phone && <span> · 📞 {form.supplier.phone}</span>}
+                          {form.supplier.email && <span> · ✉ {form.supplier.email}</span>}
+                        </div>
+                      )}
+                      {form.supplier.address && (
+                        <div className="mt-0.5 text-gray-500 text-[11px] truncate">
+                          📍 {form.supplier.address}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div>
@@ -137,7 +209,21 @@ export default function PurchaseOrdersPage() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Delivery Address</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-500">Delivery Address</label>
+                    {company?.address && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const addr = [company.address?.street, company.address?.city, company.address?.state, company.address?.pinCode].filter(Boolean).join(", ");
+                          setForm(f => ({ ...f, deliveryAddress: addr }));
+                        }}
+                        className="text-[11px] text-cyan-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        Use Company Address
+                      </button>
+                    )}
+                  </div>
                   <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} value={form.deliveryAddress || ""} onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))} placeholder="Where should goods be delivered?" />
                 </div>
                 <div>

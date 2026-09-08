@@ -11,7 +11,7 @@ import { Field, NotBuiltNotice, PageHeader, Section, StatusBadge } from "@/compo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { communications, fmtDateTime } from "@/lib/crm-data";
+import { fmtDateTime } from "@/lib/crm-data";
 
 
 export default function EmailPage() {

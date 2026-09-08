@@ -59,10 +59,11 @@ import {
   CommandList
 } from "@/components/ui/command";
 import { StatusBadge } from "@/components/crm-ui";
-import { globalSearch, notifications, fmtDateTime } from "@/lib/crm-data";
+import { fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, clearAuthData, canAccessModule, canAccessRecord, canAccessPath, getSidebarPermissions, getFirstAllowedHref } from "@/lib/authUtils";
+import { getUser, clearAuthData, canAccessModule, canAccessPath, getSidebarPermissions, getFirstAllowedHref } from "@/lib/authUtils";
 import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
+import { getNotifications } from "@/services/notificationService";
 import { useRouter } from "next/navigation";
 
 // Presentation-only: maps each SIDEBAR_MODULES key to its sidebar icon.
@@ -182,11 +183,18 @@ function AppShell({ children }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
+  const [liveNotifications, setLiveNotifications] = useState([]);
 
   useEffect(() => {
     setMounted(true);
     const u = getUser();
     setUser(u);
+
+    if (u) {
+      getNotifications({ limit: 20 })
+        .then((res) => setLiveNotifications(res?.notifications || []))
+        .catch(() => {});
+    }
 
     if (!u) {
       if (pathname !== '/login') {
@@ -237,12 +245,11 @@ function AppShell({ children }) {
     });
   }, [allNavPages, q]);
 
-  // Filter business records matching search query strictly by user permission
-  const hits = useMemo(() => {
-    if (!q.trim()) return [];
-    const allHits = globalSearch(q);
-    return allHits.filter((h) => canAccessRecord(h.kind));
-  }, [q, user]);
+  // Business-record search (customers, invoices, etc.) has no real backend
+  // yet -- no cross-collection search endpoint exists, so this stays empty
+  // rather than showing fabricated results. Sidebar page search above is
+  // real (driven by actual permissions), this just doesn't extend to records.
+  const hits = [];
 
   const QUICK_ACTION_MODULE_MAP = {
     "Create Lead": "leads",
@@ -324,7 +331,7 @@ function AppShell({ children }) {
     role: user?.role || "Member"
   };
 
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = liveNotifications.filter((n) => !n.read).length;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -389,8 +396,11 @@ function AppShell({ children }) {
             <SheetContent className="w-full sm:max-w-md">
               <SheetTitle className="px-4 pt-4">Notification centre</SheetTitle>
               <div className="space-y-2 overflow-y-auto p-4">
-                {notifications.map((n) => (
-                  <div key={n.id} className="rounded-md border border-border bg-card p-3">
+                {liveNotifications.length === 0 && (
+                  <p className="py-8 text-center text-sm text-muted-foreground">No notifications yet.</p>
+                )}
+                {liveNotifications.map((n) => (
+                  <div key={n._id || n.id} className="rounded-md border border-border bg-card p-3">
                     <div className="flex items-center justify-between gap-2">
                       <StatusBadge value={n.type} />
                       <span className="text-[11px] text-muted-foreground">{fmtDateTime(n.at)}</span>
@@ -490,35 +500,6 @@ function AppShell({ children }) {
             </CommandGroup>
           )}
 
-          {hits.length > 0 && (
-            <CommandGroup heading={`Business Records (${hits.length})`}>
-              {hits.map((h, idx) => (
-                <CommandItem
-                  key={`record-${h.kind}-${h.label}-${idx}`}
-                  value={`${h.label} ${h.sub} ${h.kind}`}
-                  onSelect={() => {
-                    setSearchOpen(false);
-                    setQ("");
-                    router.push(h.to || h.href || "/");
-                  }}
-                  asChild
-                >
-                  <Link
-                    href={h.to || h.href || "/"}
-                    onClick={() => {
-                      setSearchOpen(false);
-                      setQ("");
-                    }}
-                    className="flex items-center gap-2.5 px-3 py-2 cursor-pointer rounded-md transition-colors hover:bg-accent/15"
-                  >
-                    <StatusBadge value={h.kind} />
-                    <span className="font-medium text-sm text-foreground">{h.label}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{h.sub}</span>
-                  </Link>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
         </CommandList>
       </CommandDialog>
     </div>

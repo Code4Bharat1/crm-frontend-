@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import {
   Paperclip, Mic, Send, UserPlus, QrCode, ExternalLink,
-  Copy, Check, Sparkles, RefreshCw, X, ShieldCheck, ArrowRight, MessageSquare
+  Copy, Check, Sparkles, RefreshCw, X, ShieldCheck, ArrowRight, MessageSquare,
+  Smartphone, Wifi, Unlink
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -32,6 +33,14 @@ export default function WhatsAppPage() {
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // WhatsApp Web Client (whatsapp-web.js) State
+  const [webStatus, setWebStatus] = useState({
+    status: "DISCONNECTED",
+    isConnected: false,
+    qrCodeUrl: null
+  });
+  const [webLoading, setWebLoading] = useState(false);
+
   // QR Modal & Meta Integration State
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrData, setQrData] = useState(null);
@@ -39,7 +48,8 @@ export default function WhatsAppPage() {
   const [customGreeting, setCustomGreeting] = useState("Hello Nexcore Alliance, I would like to inquire about your automation products and solutions.");
   const [copied, setCopied] = useState(false);
   const [simulating, setSimulating] = useState(false);
-  const [activeModalTab, setActiveModalTab] = useState("qr"); // 'qr' | 'meta'
+  const [activeModalTab, setActiveModalTab] = useState("wweb"); // 'wweb' | 'qr' | 'meta'
+
 
   // Fetch all conversations
   const fetchConversations = useCallback(async () => {
@@ -71,6 +81,46 @@ export default function WhatsAppPage() {
     }
   }, []);
 
+  // Fetch WhatsApp Web Client status
+  const fetchWebStatus = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/web-client/status`);
+      if (res.data?.success) {
+        setWebStatus(res.data.data);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleStartWebClient = async () => {
+    setWebLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE}/web-client/start`);
+      if (res.data?.success) {
+        setWebStatus(res.data.data);
+        toast.success("WhatsApp Web initializing. Generating QR code...");
+      }
+    } catch (err) {
+      toast.error("Failed to start WhatsApp Web: " + (err.response?.data?.error || err.message));
+    } finally {
+      setWebLoading(false);
+    }
+  };
+
+  const handleDisconnectWebClient = async () => {
+    setWebLoading(true);
+    try {
+      await axios.post(`${API_BASE}/web-client/disconnect`);
+      toast.info("WhatsApp Web client disconnected.");
+      fetchWebStatus();
+    } catch (err) {
+      toast.error("Failed to disconnect: " + err.message);
+    } finally {
+      setWebLoading(false);
+    }
+  };
+
   // Fetch QR Code data & Meta config
   const fetchQrAndConfig = useCallback(async (greetingText) => {
     try {
@@ -88,14 +138,17 @@ export default function WhatsAppPage() {
   useEffect(() => {
     fetchConversations();
     fetchQrAndConfig();
+    fetchWebStatus();
 
-    // Poll every 4 seconds for fresh incoming messages
+    // Poll every 4 seconds for fresh incoming messages and web client status
     const interval = setInterval(() => {
       fetchConversations();
+      fetchWebStatus();
       if (active) fetchMessages(active);
     }, 4000);
     return () => clearInterval(interval);
-  }, [fetchConversations, active, fetchMessages, fetchQrAndConfig]);
+  }, [fetchConversations, active, fetchMessages, fetchQrAndConfig, fetchWebStatus]);
+
 
   useEffect(() => {
     if (active) {
@@ -226,13 +279,50 @@ export default function WhatsAppPage() {
         subtitle="Customer Scan QR ➔ Meta Cloud API ➔ Webhook ➔ Real-time CRM Ingestion & Chat."
         actions={
           <div className="flex items-center gap-2">
+            {/* WhatsApp Web Live Status Badge */}
+            {webStatus.isConnected ? (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Web Client Connected</span>
+              </div>
+            ) : webStatus.status === "QR_READY" ? (
+              <button
+                onClick={() => { setActiveModalTab("wweb"); setShowQrModal(true); }}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold cursor-pointer animate-pulse hover:bg-amber-100 transition-colors"
+                title="Click to view QR code"
+              >
+                <span className="size-2 rounded-full bg-amber-500" />
+                <span>Scan Web QR to Link</span>
+              </button>
+            ) : null}
+
+            {/* Link Phone via whatsapp-web.js Button */}
             <Button
-              onClick={() => { fetchQrAndConfig(); setShowQrModal(true); }}
+              onClick={() => {
+                fetchWebStatus();
+                setActiveModalTab("wweb");
+                setShowQrModal(true);
+              }}
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm cursor-pointer"
             >
-              <QrCode className="size-4" />
-              <span>Scan QR to Chat</span>
+              <Smartphone className="size-4" />
+              <span>{webStatus.isConnected ? "WhatsApp Linked" : "Link Phone (Web.js)"}</span>
             </Button>
+
+            {/* Customer Scan wa.me link */}
+            <Button
+              onClick={() => {
+                fetchQrAndConfig();
+                setActiveModalTab("qr");
+                setShowQrModal(true);
+              }}
+              variant="outline"
+              className="gap-2 font-semibold shadow-xs cursor-pointer"
+            >
+              <QrCode className="size-4 text-emerald-600" />
+              <span>Customer QR</span>
+            </Button>
+
             <Button
               onClick={handleSimulateScanMessage}
               disabled={simulating}
@@ -241,10 +331,11 @@ export default function WhatsAppPage() {
               title="Simulates an incoming WhatsApp message triggered by a customer QR scan"
             >
               <Sparkles className={`size-3.5 text-amber-600 ${simulating ? "animate-spin" : ""}`} />
-              <span>Simulate Customer Scan</span>
+              <span className="hidden md:inline">Simulate Scan</span>
             </Button>
           </div>
         }
+
       />
 
       {/* Main Inbox 3-Column Layout */}
@@ -413,17 +504,17 @@ export default function WhatsAppPage() {
       {/* ─── Scan WhatsApp QR & Meta Cloud API Modal ─── */}
       {showQrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                  <QrCode className="size-5" />
+                  <Smartphone className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-bold text-foreground">Customer Scan QR to WhatsApp</h3>
-                  <p className="text-xs text-muted-foreground">Scan with phone camera ➔ Meta Cloud API ➔ Webhook ➔ CRM</p>
+                  <h3 className="font-display text-lg font-bold text-foreground">WhatsApp Integration & Phone Linking</h3>
+                  <p className="text-xs text-muted-foreground">Link your phone via whatsapp-web.js or configure Meta Cloud API</p>
                 </div>
               </div>
               <button
@@ -434,36 +525,23 @@ export default function WhatsAppPage() {
               </button>
             </div>
 
-            {/* Architecture Flow Banner */}
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-950">
-              <p className="font-semibold text-emerald-800 flex items-center gap-1.5 mb-1">
-                <ShieldCheck className="size-4 text-emerald-600" />
-                <span>Architecture Flow:</span>
-              </p>
-              <div className="flex flex-wrap items-center gap-1 text-[11px] font-mono text-emerald-900">
-                <span className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-semibold">Customer</span>
-                <ArrowRight className="size-3" />
-                <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-semibold">Scan QR</span>
-                <ArrowRight className="size-3" />
-                <span className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-semibold">WhatsApp</span>
-                <ArrowRight className="size-3" />
-                <span className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-semibold">Meta Cloud API</span>
-                <ArrowRight className="size-3" />
-                <span className="bg-blue-600 text-white px-2 py-0.5 rounded font-semibold">Webhook</span>
-                <ArrowRight className="size-3" />
-                <span className="bg-white px-2 py-0.5 rounded border border-emerald-200 font-semibold">CRM Database</span>
-              </div>
-            </div>
-
             {/* Tab Selector */}
             <div className="mt-4 flex rounded-lg border p-1 bg-muted/40 text-xs">
+              <button
+                onClick={() => setActiveModalTab("wweb")}
+                className={`flex-1 py-1.5 font-semibold rounded-md transition-all cursor-pointer ${
+                  activeModalTab === "wweb" ? "bg-white text-emerald-700 shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Link Phone (Web.js)
+              </button>
               <button
                 onClick={() => setActiveModalTab("qr")}
                 className={`flex-1 py-1.5 font-semibold rounded-md transition-all cursor-pointer ${
                   activeModalTab === "qr" ? "bg-white text-emerald-700 shadow-xs" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Scan QR Code & Link
+                Customer QR (wa.me)
               </button>
               <button
                 onClick={() => setActiveModalTab("meta")}
@@ -471,11 +549,126 @@ export default function WhatsAppPage() {
                   activeModalTab === "meta" ? "bg-white text-emerald-700 shadow-xs" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Meta Webhook Settings
+                Meta Cloud API
               </button>
             </div>
 
-            {/* Tab 1: QR Code & Chat Link */}
+            {/* Tab 1: WhatsApp Web.js Phone Linking */}
+            {activeModalTab === "wweb" && (
+              <div className="mt-4 space-y-4">
+                {webStatus.isConnected ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                        <Check className="size-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-emerald-900 text-sm">WhatsApp Web Connected & Synchronized</h4>
+                        <p className="text-xs text-emerald-700">Your phone session is active. Messages sent from CRM will route directly through your phone.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-emerald-200 pt-3 text-xs">
+                      <span className="text-emerald-800 font-medium">Session Provider: whatsapp-web.js (Puppeteer)</span>
+                      <Button
+                        onClick={handleDisconnectWebClient}
+                        disabled={webLoading}
+                        variant="destructive"
+                        size="sm"
+                        className="cursor-pointer"
+                      >
+                        <Unlink className="size-3.5 mr-1" />
+                        <span>Disconnect Phone</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : webStatus.status === "QR_READY" && webStatus.qrCodeUrl ? (
+                  <div className="space-y-4 text-center">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
+                      <p className="font-bold text-amber-950 mb-1">Scan this QR Code with WhatsApp on your phone:</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-left max-w-sm mx-auto text-[11px] text-amber-900">
+                        <li>Open <strong className="text-foreground">WhatsApp</strong> on your mobile phone</li>
+                        <li>Tap <strong className="text-foreground">Settings</strong> (iOS) or <strong className="text-foreground">⋮ (Menu)</strong> (Android)</li>
+                        <li>Select <strong className="text-foreground">Linked Devices</strong> ➔ <strong className="text-foreground">Link a Device</strong></li>
+                        <li>Point your phone camera at this QR code</li>
+                      </ol>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="p-3 bg-white rounded-2xl border border-border shadow-md">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={webStatus.qrCodeUrl}
+                          alt="WhatsApp Web QR Code"
+                          className="size-56 rounded-lg object-contain"
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-amber-800 bg-amber-100/70 px-3 py-1 rounded-full animate-pulse font-medium">
+                        <span className="size-2 rounded-full bg-amber-500" />
+                        <span>Waiting for scan... (Auto-detects login)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center gap-2 pt-1">
+                      <Button
+                        onClick={handleStartWebClient}
+                        disabled={webLoading}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs cursor-pointer"
+                      >
+                        <RefreshCw className={`size-3.5 ${webLoading ? "animate-spin" : ""}`} />
+                        <span>Refresh QR</span>
+                      </Button>
+                      <Button
+                        onClick={handleDisconnectWebClient}
+                        disabled={webLoading}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <span>Cancel</span>
+                      </Button>
+                    </div>
+                  </div>
+                ) : webStatus.status === "INITIALIZING" ? (
+                  <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                    <RefreshCw className="size-8 animate-spin text-emerald-600" />
+                    <p className="font-semibold text-foreground text-sm">Launching Headless Chromium Browser...</p>
+                    <p className="text-xs text-muted-foreground text-center max-w-xs">
+                      Connecting to web.whatsapp.com and generating your login QR code. This takes 5 to 10 seconds.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2 text-xs">
+                      <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
+                        <Smartphone className="size-4 text-emerald-600" />
+                        <span>Direct WhatsApp Web Phone Linking</span>
+                      </h4>
+                      <p className="text-muted-foreground">
+                        Connect any regular SIM or WhatsApp Business phone number without needing Meta business approval, developer accounts, or credit cards.
+                      </p>
+                      <ul className="list-disc list-inside text-muted-foreground space-y-1 pt-1">
+                        <li>Send and receive WhatsApp messages directly from CRM</li>
+                        <li>Session is saved locally with <code className="font-bold">LocalAuth</code> (no need to scan every restart)</li>
+                        <li>Incoming messages auto-link with customer and lead contacts</li>
+                      </ul>
+                    </div>
+
+                    <Button
+                      onClick={handleStartWebClient}
+                      disabled={webLoading}
+                      className="w-full h-11 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer shadow-md"
+                    >
+                      <Smartphone className="size-4" />
+                      <span>{webLoading ? "Initializing Browser..." : "Generate Linked Device QR Code"}</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: QR Code & Chat Link (wa.me) */}
             {activeModalTab === "qr" && (
               <div className="mt-4 space-y-4">
                 <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -497,6 +690,7 @@ export default function WhatsAppPage() {
                       +{qrData?.phoneNumber || "WhatsApp Business"}
                     </span>
                   </div>
+
 
                   {/* Actions & Instructions */}
                   <div className="space-y-3 flex-1 text-xs">

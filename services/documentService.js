@@ -17,7 +17,10 @@ const req = async (path, options = {}) => {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }), ...options.headers },
   });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.message || 'Request failed'); }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.message || e.error || (res.status === 404 ? `Backend endpoint ${path} not found (404)` : `Request failed (${res.status})`));
+  }
   return res.json();
 };
 

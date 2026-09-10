@@ -9,6 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { Field, NotBuiltNotice, PageHeader, Section, StatusBadge } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LEAD_STAGES } from "@/lib/crm-data";
 
 
 const SAMPLE = "Customer needs 20 controllers by next month and wants quotation. Site is at Chakan MIDC, contact Sachin Patil 9822xxxxx. Budget around 4 lakh.";
@@ -28,7 +29,7 @@ export default function AiPage() {
     expectedValue: "₹4,00,000",
     expectedDate: "30 Sep 2026",
     area: "Chakan MIDC",
-    suggestedStage: "Potential",
+    suggestedStage: "", // blank first, required
     suggestedPriority: "High",
     suggestedFollowUp: "16 Aug 2026"
   });
@@ -97,7 +98,7 @@ export default function AiPage() {
           expectedValue: val(lead.expectedValue) || '',
           expectedDate: val(lead.expectedDate) || '',
           area: val(lead.area) || 'Not specified',
-          suggestedStage: val(lead.suggestedStage) || 'Potential',
+          suggestedStage: '', // Blank first as required
           suggestedPriority: val(lead.suggestedPriority) || 'Medium',
           suggestedFollowUp: val(lead.suggestedFollowUp) || '',
         });
@@ -113,6 +114,14 @@ export default function AiPage() {
   };
 
   const handleConfirm = async () => {
+    // Validate that Status / Stage is selected
+    if (!formData.suggestedStage || !formData.suggestedStage.trim()) {
+      toast.error("Status / Stage is required!", {
+        description: "Please select a stage (e.g. New, Potential, Quotation Sent) before confirming."
+      });
+      return;
+    }
+
     try {
       const senderName = emailDetails
         ? (emailDetails.from || '').split('<')[0].trim() || emailDetails.from
@@ -121,11 +130,19 @@ export default function AiPage() {
       // Use sender name as fallback when AI returned N/A/empty
       const isBlank = (v) => !v || ['n/a','null','none','not specified','unknown',''].includes(v.toLowerCase?.().trim());
 
+      let cleanStage = formData.suggestedStage.trim();
+      if (cleanStage.toLowerCase() === "quotation") {
+        cleanStage = "Quotation Sent";
+      }
+
+      const validStages = ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"];
+      const stageToSave = validStages.includes(cleanStage) ? cleanStage : "New";
+
       const payload = {
         id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
         customerName: isBlank(formData.customer) ? senderName : formData.customer,
         source: "Email Inquiry",
-        stage: ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"].includes(formData.suggestedStage) ? formData.suggestedStage : "New",
+        stage: stageToSave,
         priority: ["Low", "Medium", "High", "Critical"].includes(formData.suggestedPriority) ? formData.suggestedPriority : "Medium",
         value: parseInt((formData.expectedValue || "0").toString().replace(/[^0-9]/g, "")) || 0,
         salesperson: "System AI",
@@ -227,7 +244,25 @@ export default function AiPage() {
                 <Field label="Expected value"><Input value={formData.expectedValue} onChange={e => setFormData({...formData, expectedValue: e.target.value})} /></Field>
                 <Field label="Expected date"><Input value={formData.expectedDate} onChange={e => setFormData({...formData, expectedDate: e.target.value})} /></Field>
                 <Field label="Area"><Input value={formData.area} onChange={e => setFormData({...formData, area: e.target.value})} /></Field>
-                <Field label="Suggested stage"><Input value={formData.suggestedStage} onChange={e => setFormData({...formData, suggestedStage: e.target.value})} /></Field>
+                <Field label="Suggested stage *">
+                  <select
+                    required
+                    value={formData.suggestedStage || ""}
+                    onChange={e => setFormData({ ...formData, suggestedStage: e.target.value })}
+                    className={`flex h-9 w-full rounded-md border bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      !formData.suggestedStage ? "border-amber-400 text-gray-500 font-normal" : "border-input text-gray-900 font-medium"
+                    }`}
+                  >
+                    <option value="" disabled>
+                      Select stage (e.g. New, Potential, Quotation...) *
+                    </option>
+                    {LEAD_STAGES.map(st => (
+                      <option key={st} value={st} className="text-gray-900">
+                        {st === "Quotation Sent" ? "Quotation / Quotation Sent" : st}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Suggested priority"><Input value={formData.suggestedPriority} onChange={e => setFormData({...formData, suggestedPriority: e.target.value})} /></Field>
                 <Field label="Suggested follow-up"><Input value={formData.suggestedFollowUp} onChange={e => setFormData({...formData, suggestedFollowUp: e.target.value})} /></Field>
               </div>

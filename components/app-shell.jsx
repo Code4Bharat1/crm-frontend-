@@ -61,8 +61,19 @@ import {
 import { StatusBadge } from "@/components/crm-ui";
 import { fmtDateTime } from "@/lib/crm-data";
 import { toast } from "sonner";
-import { getUser, clearAuthData, canAccessModule, canAccessPath, getSidebarPermissions, getFirstAllowedHref } from "@/lib/authUtils";
-import { SIDEBAR_MODULES } from "@/lib/sidebarModules";
+import {
+  getUser,
+  getAuthData,
+  setAuthData,
+  clearAuthData,
+  canAccessModule,
+  canAccessPath,
+  getSidebarPermissions,
+  getFirstAllowedHref,
+  isSuperAdminRole
+} from "@/lib/authUtils";
+import { SIDEBAR_MODULES, isRoleMatch } from "@/lib/sidebarModules";
+import { getRoles } from "@/services/roleService";
 import { getNotifications } from "@/services/notificationService";
 import { useRouter } from "next/navigation";
 
@@ -125,36 +136,30 @@ const QUICK_ACTIONS = [
   "Add Follow-up"
 ];
 
-const getFilteredNav = () => {
-  const user = getUser();
+const getFilteredNav = (currentUser, customPerms) => {
+  const user = currentUser || getUser();
   if (!user) return [];
-  const role = (user?.role || '').toLowerCase().trim();
-  const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
+  const isSuperAdmin = isSuperAdminRole(user?.role);
 
-  // Admins always see everything.
+  // Strictly Admin gets all permissions and full sidebar
   if (isSuperAdmin) {
     return NAV;
   }
 
-  const sidebarPermissions = getSidebarPermissions();
+  const sidebarPermissions = customPerms || getSidebarPermissions() || {};
 
-  // No role configured in Users & Roles yet for this account's role -- show
-  // everything rather than silently locking the user out.
-  if (!sidebarPermissions) {
-    return NAV;
-  }
-
+  // For non-admin employees, show strictly what Admin enabled + dashboard
   return NAV
-    .map(group => ({
+    .map((group) => ({
       ...group,
-      items: group.items.filter(it => !!sidebarPermissions[it.key]),
+      items: group.items.filter((it) => it.key === "dashboard" || Boolean(sidebarPermissions[it.key])),
     }))
-    .filter(group => group.items.length > 0);
+    .filter((group) => group.items.length > 0);
 };
 
-function SidebarNav({ onNavigate }) {
+function SidebarNav({ onNavigate, user, permissions }) {
   const pathname = usePathname();
-  const filteredNav = getFilteredNav();
+  const filteredNav = useMemo(() => getFilteredNav(user, permissions), [user, permissions]);
   return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto no-scrollbar px-2 py-3" }, filteredNav.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
     const active = it.href === "/" ? pathname === "/" : pathname.startsWith(it.href);
     return /* @__PURE__ */ React.createElement("li", { key: it.href }, /* @__PURE__ */ React.createElement(
@@ -183,17 +188,22 @@ function AppShell({ children }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
+  const [sidebarPerms, setSidebarPerms] = useState(null);
   const [liveNotifications, setLiveNotifications] = useState([]);
 
   useEffect(() => {
     setMounted(true);
     const u = getUser();
     setUser(u);
+    const localPerms = getSidebarPermissions();
+    if (localPerms) {
+      setSidebarPerms(localPerms);
+    }
 
     if (u) {
       getNotifications({ limit: 20 })
         .then((res) => setLiveNotifications(res?.notifications || []))
-        .catch(() => {});
+        .catch(() => { });
     }
 
     if (!u) {
@@ -203,22 +213,40 @@ function AppShell({ children }) {
       return;
     }
 
-    const role = (u.role || '').toLowerCase().trim();
-    const isSuperAdmin = role === 'admin' || role === 'director' || role === 'admin manager';
-    if (isSuperAdmin) return;
+    const isSuperAdmin = isSuperAdminRole(u.role);
 
-    if (!canAccessPath(pathname)) {
-      toast.error("You are not authorized to view this module.");
-      const fallback = getFirstAllowedHref();
-      if (fallback && fallback !== pathname) {
-        router.replace(fallback);
+    // Live permission sync: non-admins immediately fetch latest role permissions from DB
+    if (!isSuperAdmin) {
+      getRoles()
+        .then((res) => {
+          if (res && res.success && Array.isArray(res.data)) {
+            const matchedRole = res.data.find((r) => isRoleMatch(r.name, u.role));
+            if (matchedRole && matchedRole.permissions) {
+              const updatedPerms = { ...matchedRole.permissions, dashboard: true };
+              setSidebarPerms(updatedPerms);
+              const authData = getAuthData();
+              if (authData) {
+                authData.sidebarPermissions = updatedPerms;
+                setAuthData(authData);
+              }
+            }
+          }
+        })
+        .catch((err) => console.warn("Live role sync warning:", err));
+
+      if (!canAccessPath(pathname)) {
+        toast.error("You are not authorized to view this module.");
+        const fallback = getFirstAllowedHref();
+        if (fallback && fallback !== pathname) {
+          router.replace(fallback);
+        }
       }
     }
   }, [pathname, router]);
 
   // Extract all navigable sidebar pages according to user access (HOOKS MUST PRECEDE EARLY RETURNS)
   const allNavPages = useMemo(() => {
-    const nav = getFilteredNav();
+    const nav = getFilteredNav(user, sidebarPerms);
     const pages = [];
     nav.forEach((group) => {
       group.items.forEach((item) => {
@@ -231,7 +259,7 @@ function AppShell({ children }) {
       });
     });
     return pages;
-  }, [user]);
+  }, [user, sidebarPerms]);
 
   // Filter sidebar pages matching search query strictly from permitted navigation
   const matchingPages = useMemo(() => {
@@ -304,7 +332,7 @@ function AppShell({ children }) {
       </div>
     );
   }
-  
+
   if (!user) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
@@ -336,7 +364,7 @@ function AppShell({ children }) {
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex overflow-hidden">
-        <SidebarNav />
+        <SidebarNav user={user} permissions={sidebarPerms} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md">
@@ -349,7 +377,7 @@ function AppShell({ children }) {
             <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex h-full flex-col overflow-hidden">
-                <SidebarNav onNavigate={() => setMobileOpen(false)} />
+                <SidebarNav onNavigate={() => setMobileOpen(false)} user={user} permissions={sidebarPerms} />
               </div>
             </SheetContent>
           </Sheet>

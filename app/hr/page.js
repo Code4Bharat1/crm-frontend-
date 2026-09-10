@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -49,7 +50,9 @@ import { getUser } from "@/lib/authUtils";
 import { WeekendPolicyCard } from "@/components/WeekendPolicyCard";
 
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from "@/services/employeeService";
-import { getRoles, createRole, deleteRole } from "@/services/roleService";
+import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
+import { SIDEBAR_MODULES, ALL_SIDEBAR_ITEMS } from "@/lib/sidebarModules";
+
 
 const cleanRoleStr = (s) => (s || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 const getRoleStem = (s) => cleanRoleStr(s).replace(/(?:es|s)$/, "");
@@ -80,6 +83,14 @@ export default function Page() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false);
   const [isSubmittingRole, setIsSubmittingRole] = useState(false);
+
+  // Role permissions modal state
+  const [isPermsModalOpen, setIsPermsModalOpen] = useState(false);
+  const [selectedRoleForPerms, setSelectedRoleForPerms] = useState(null);
+  const [rolePermsState, setRolePermsState] = useState({});
+  const [permsSearch, setPermsSearch] = useState("");
+  const [activePermCategory, setActivePermCategory] = useState("all");
+  const [isSavingPerms, setIsSavingPerms] = useState(false);
 
   // Employee creation form data (no department required)
   const [employeeFormData, setEmployeeFormData] = useState({
@@ -347,6 +358,69 @@ export default function Page() {
     }
   };
 
+  const handleOpenPermsModal = (role) => {
+    setSelectedRoleForPerms(role);
+    const initialPerms = {};
+    ALL_SIDEBAR_ITEMS.forEach((item) => {
+      initialPerms[item.key] = item.key === "dashboard" ? true : Boolean(role.permissions?.[item.key]);
+    });
+    setRolePermsState(initialPerms);
+    setPermsSearch("");
+    setActivePermCategory("all");
+    setIsPermsModalOpen(true);
+  };
+
+  const handleTogglePerm = (key) => {
+    if (key === "dashboard") return;
+    setRolePermsState((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleTogglePermCategory = (groupName, makeChecked) => {
+    const groupItems = SIDEBAR_MODULES.find((g) => g.group === groupName)?.items || [];
+    setRolePermsState((prev) => {
+      const updated = { ...prev };
+      groupItems.forEach((it) => {
+        if (it.key !== "dashboard") {
+          updated[it.key] = makeChecked;
+        }
+      });
+      return updated;
+    });
+  };
+
+  const handlePermSelectAll = (checked) => {
+    const updated = {};
+    ALL_SIDEBAR_ITEMS.forEach((it) => {
+      updated[it.key] = it.key === "dashboard" ? true : checked;
+    });
+    setRolePermsState(updated);
+  };
+
+  const handleSaveRolePerms = async () => {
+    if (!selectedRoleForPerms) return;
+    setIsSavingPerms(true);
+    try {
+      const roleId = selectedRoleForPerms.id || selectedRoleForPerms._id;
+      const res = await updateRole(roleId, {
+        permissions: rolePermsState,
+      });
+      if (res && res.success) {
+        toast.success(`Permissions updated successfully for "${selectedRoleForPerms.name}"`);
+        setIsPermsModalOpen(false);
+        fetchData();
+      } else {
+        toast.error(res?.message || "Failed to update permissions");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to save permissions");
+    } finally {
+      setIsSavingPerms(false);
+    }
+  };
+
   // KPI calculations from real data
   const totalRolesCount = rolesData.length;
   const staffedRolesCount = rolesData.filter((r) => !r.isVacant).length;
@@ -588,7 +662,7 @@ export default function Page() {
                             Sidebar Access
                           </span>
                           <span className="font-mono text-xs font-bold text-foreground">
-                            {permissionsCount > 0 ? `${permissionsCount} / 37 modules` : "Standard Access"}
+                            {permissionsCount > 0 ? `${permissionsCount} / ${ALL_SIDEBAR_ITEMS.length} modules` : "Dashboard Only"}
                           </span>
                         </div>
 
@@ -606,15 +680,13 @@ export default function Page() {
 
                           <Button
                             size="sm"
-                            variant="ghost"
-                            asChild
-                            className="text-xs h-8 text-muted-foreground hover:text-foreground"
-                            title="Configure role permissions in Users & Roles"
+                            variant="outline"
+                            onClick={() => handleOpenPermsModal(r)}
+                            className="gap-1.5 text-xs h-8 border-primary/30 text-primary hover:bg-primary/10"
+                            title="Configure role permissions directly in HR"
                           >
-                            <Link href="/users-roles" className="gap-1">
-                              <Lock className="size-3.5" />
-                              Permissions
-                            </Link>
+                            <Lock className="size-3.5" />
+                            Permissions
                           </Button>
 
                           {r.isCustomRole && r.isVacant && (
@@ -1169,6 +1241,221 @@ export default function Page() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── ROLE PERMISSIONS CONFIGURATION MODAL (ADMIN HR CONFIG) ─── */}
+      <Dialog open={isPermsModalOpen} onOpenChange={setIsPermsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b border-border">
+            <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
+              <div>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Lock className="size-5 text-primary" />
+                  Configure Permissions: {selectedRoleForPerms?.name}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                  Select which sidebar modules team members assigned to the &quot;{selectedRoleForPerms?.name}&quot; role can view and access.
+                </DialogDescription>
+              </div>
+              <Badge variant="outline" className="text-xs font-mono font-semibold py-1 px-3 border-primary/30 text-primary">
+                {Object.values(rolePermsState).filter(Boolean).length} / {ALL_SIDEBAR_ITEMS.length} Modules Allowed
+              </Badge>
+            </div>
+
+            {/* Filter tabs & Search */}
+            <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <button
+                  type="button"
+                  onClick={() => setActivePermCategory("all")}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-colors",
+                    activePermCategory === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All ({ALL_SIDEBAR_ITEMS.length})
+                </button>
+                {SIDEBAR_MODULES.map((g) => (
+                  <button
+                    key={g.group}
+                    type="button"
+                    onClick={() => setActivePermCategory(g.group)}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-colors",
+                      activePermCategory === g.group
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {g.group} ({g.items.length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="relative w-full sm:w-48">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search module..."
+                    value={permsSearch}
+                    onChange={(e) => setPermsSearch(e.target.value)}
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePermSelectAll(true)}
+                  className="h-8 text-xs"
+                >
+                  Select All
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePermSelectAll(false)}
+                  className="h-8 text-xs"
+                >
+                  Clear All
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Module checklist grid */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {SIDEBAR_MODULES.filter(
+              (group) => activePermCategory === "all" || group.group === activePermCategory
+            ).map((group) => {
+              const items = group.items.filter((item) => {
+                if (!permsSearch.trim()) return true;
+                const query = permsSearch.toLowerCase();
+                return (
+                  item.label.toLowerCase().includes(query) ||
+                  item.key.toLowerCase().includes(query) ||
+                  group.group.toLowerCase().includes(query)
+                );
+              });
+
+              if (items.length === 0) return null;
+
+              return (
+                <div key={group.group} className="rounded-lg border border-border bg-card/60 p-4">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        {group.group}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        ({items.filter((it) => Boolean(rolePermsState[it.key])).length} / {items.length} enabled)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePermCategory(group.group, true)}
+                        className="text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Check All
+                      </button>
+                      <span className="text-muted-foreground text-xs">•</span>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePermCategory(group.group, false)}
+                        className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        Uncheck All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {items.map((item) => {
+                      const isChecked = Boolean(rolePermsState[item.key]);
+                      const isDashboard = item.key === "dashboard";
+
+                      return (
+                        <div
+                          key={item.key}
+                          onClick={() => !isDashboard && handleTogglePerm(item.key)}
+                          className={cn(
+                            "flex items-start gap-2.5 p-2.5 rounded-md border transition-all cursor-pointer select-none",
+                            isChecked
+                              ? "bg-primary/5 border-primary/40 shadow-xs"
+                              : "bg-background border-border hover:border-border/90",
+                            isDashboard && "cursor-default opacity-85"
+                          )}
+                        >
+                          <Checkbox
+                            id={`hr-perm-${item.key}`}
+                            checked={isChecked}
+                            disabled={isDashboard}
+                            onCheckedChange={() => handleTogglePerm(item.key)}
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <label
+                              htmlFor={`hr-perm-${item.key}`}
+                              className="text-xs font-semibold text-foreground cursor-pointer block leading-tight"
+                            >
+                              {item.label}
+                            </label>
+                            <span className="font-mono text-[10px] text-muted-foreground block truncate mt-0.5">
+                              {item.href}
+                            </span>
+                            {isDashboard && (
+                              <span className="inline-block text-[9px] font-bold uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.2 rounded mt-1">
+                                Always Enabled
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="p-4 border-t border-border bg-muted/20 flex items-center justify-between sm:justify-between">
+            <span className="text-xs text-muted-foreground">
+              Changes apply instantly to all employees with this role.
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPermsModalOpen(false)}
+                disabled={isSavingPerms}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveRolePerms}
+                disabled={isSavingPerms}
+                className="gap-1.5"
+              >
+                {isSavingPerms ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Saving Permissions...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-3.5" />
+                    Save Permissions
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

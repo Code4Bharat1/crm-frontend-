@@ -123,17 +123,20 @@ const NAV = SIDEBAR_MODULES.map((group) => ({
 }));
 
 const QUICK_ACTIONS = [
-  "Create Lead",
-  "Add Customer",
-  "Create Quotation",
-  "Create Proforma Invoice",
-  "Create Sales Order",
-  "Create Delivery Note",
-  "Create Sales Invoice",
-  "Record Payment",
-  "Create Project",
-  "Create Service Request",
-  "Add Follow-up"
+  { label: "Create Lead", href: "/leads?action=create", module: "leads", icon: UserPlus },
+  { label: "Add Customer", href: "/customers?action=create", module: "customers", icon: Users },
+  { label: "Create Quotation", href: "/quotations?action=create", module: "quotations", icon: FileText },
+  { label: "Create Proforma Invoice", href: "/proformas?action=create", module: "proformas", icon: FileText },
+  { label: "Create Sales Order", href: "/orders?action=create", module: "orders", icon: ShoppingCart },
+  { label: "Create Delivery Note", href: "/deliveries?action=create", module: "deliveries", icon: Truck },
+  { label: "Create Sales Invoice", href: "/invoices?action=create", module: "invoices", icon: Receipt },
+  { label: "Record Payment", href: "/payments?action=create", module: "payments", icon: IndianRupee },
+  { label: "Add Product", href: "/products?action=create", module: "products", icon: Package },
+  { label: "Create Project", href: "/projects?action=create", module: "projects", icon: FolderKanban },
+  { label: "Create Service Request", href: "/service?action=create", module: "service", icon: Wrench },
+  { label: "Add Follow-up", href: "/follow-ups?action=create", module: "follow_ups", icon: CalendarCheck },
+  { label: "New Purchase Order", href: "/purchase?action=create", module: "purchase", icon: ShoppingCart },
+  { label: "Bank Reconciliation", href: "/banking", module: "banking", icon: Landmark },
 ];
 
 const getFilteredNav = (currentUser, customPerms) => {
@@ -279,26 +282,11 @@ function AppShell({ children }) {
   // real (driven by actual permissions), this just doesn't extend to records.
   const hits = [];
 
-  const QUICK_ACTION_MODULE_MAP = {
-    "Create Lead": "leads",
-    "Add Customer": "customers",
-    "Create Quotation": "quotations",
-    "Create Proforma Invoice": "proformas",
-    "Create Sales Order": "orders",
-    "Create Delivery Note": "deliveries",
-    "Create Sales Invoice": "invoices",
-    "Record Payment": "payments",
-    "Create Project": "projects",
-    "Create Service Request": "service",
-    "Add Follow-up": "follow_ups"
-  };
-
   const permittedQuickActions = useMemo(() => {
     return QUICK_ACTIONS.filter((action) => {
-      const mod = QUICK_ACTION_MODULE_MAP[action];
-      return mod ? canAccessModule(mod) : true;
+      return !action.module || canAccessModule(action.module);
     });
-  }, [user]);
+  }, [user, sidebarPerms]);
 
   // Global keyboard shortcut: Ctrl+K or Cmd+K to open search dialog
   useEffect(() => {
@@ -393,21 +381,30 @@ function AppShell({ children }) {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="h-10 gap-1.5 bg-accent font-bold text-accent-foreground hover:bg-accent/90">
+              <Button className="h-10 gap-1.5 bg-accent font-bold text-accent-foreground hover:bg-accent/90 cursor-pointer shadow-sm">
                 <Plus className="size-4" /> <span className="hidden sm:inline">Quick Action</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Create new</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-60 shadow-xl rounded-xl border border-gray-100">
+              <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
+                Quick Actions
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {permittedQuickActions.map((a) => (
-                <DropdownMenuItem
-                  key={a}
-                  onSelect={() => toast.info(a, { description: "Prototype form — connect backend to persist this record." })}
-                >
-                  {a}
-                </DropdownMenuItem>
-              ))}
+              <div className="max-h-[380px] overflow-y-auto py-1">
+                {permittedQuickActions.map((action) => {
+                  const Icon = action.icon || Plus;
+                  return (
+                    <DropdownMenuItem
+                      key={action.label}
+                      onSelect={() => router.push(action.href)}
+                      className="cursor-pointer flex items-center gap-2.5 px-3 py-2 text-sm font-medium hover:bg-accent/15 focus:bg-accent/15 transition-colors"
+                    >
+                      <Icon className="size-4 text-blue-600 shrink-0" />
+                      <span className="truncate">{action.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
           <Sheet>

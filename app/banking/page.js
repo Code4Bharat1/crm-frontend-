@@ -126,9 +126,8 @@ export default function Page() {
     <>
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-2xl ${
-            toast.type === "error" ? "bg-red-600" : "bg-emerald-600"
-          }`}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-2xl ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"
+            }`}
         >
           <span>{toast.type === "error" ? "⚠️" : "✓"}</span>
           <span>{toast.msg}</span>

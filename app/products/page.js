@@ -4,11 +4,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   getProducts, createProduct, updateProduct, deleteProduct, adjustProductStock,
+  getProductCategories, createProductCategory, deleteProductCategory,
   getSuppliers, fmtINR
 } from "@/services/documentService";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 
-const CATEGORIES = ["All", "Automation", "Switchgear", "Motors", "Sensors", "Cables", "Drives", "Pneumatics", "General"];
+const DEFAULT_CATEGORIES = ["Automation", "Switchgear", "Motors", "Sensors", "Cables", "Drives", "Pneumatics", "General"];
 const UNITS = ["Nos", "Pcs", "Set", "Pair", "Box", "Kg", "Mtr", "Ltr", "Roll", "Lot"];
 const GST_RATES = [0, 5, 12, 18, 28];
 
@@ -35,9 +36,13 @@ const emptyForm = {
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showForm, setShowForm] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
+  const [savingCategory, setSavingCategory] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -53,12 +58,21 @@ export default function ProductsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [prods, sups] = await Promise.all([
+      const [prods, sups, cats] = await Promise.all([
         getProducts().catch(() => []),
         getSuppliers().catch(() => []),
+        getProductCategories().catch(() => []),
       ]);
-      setProducts(Array.isArray(prods) ? prods : []);
+      const prodsList = Array.isArray(prods) ? prods : [];
+      setProducts(prodsList);
       setSuppliers(Array.isArray(sups) ? sups : []);
+
+      const catNamesFromDb = Array.isArray(cats)
+        ? cats.map(c => (typeof c === "string" ? c : c.name)).filter(Boolean)
+        : [];
+      const catNamesFromProducts = prodsList.map(p => p.category).filter(Boolean);
+      const mergedCategories = Array.from(new Set([...DEFAULT_CATEGORIES, ...catNamesFromDb, ...catNamesFromProducts]));
+      setCategories(mergedCategories);
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,6 +81,17 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        openCreate();
+      } else if (p.get("action") === "add-category" || p.get("category") === "true") {
+        setShowCategoryModal(true);
+      }
+    }
+  }, []);
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -134,6 +159,47 @@ export default function ProductsPage() {
       load();
     } catch (err) {
       showToast(err.message, "error");
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e?.preventDefault();
+    const trimmed = categoryForm.name?.trim();
+    if (!trimmed) return showToast("Category name is required", "error");
+    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      return showToast(`Category "${trimmed}" already exists`, "error");
+    }
+    setSavingCategory(true);
+    try {
+      await createProductCategory({ name: trimmed, description: categoryForm.description });
+      setCategories(prev => [...prev, trimmed]);
+      setForm(f => ({ ...f, category: trimmed }));
+      showToast(`Category "${trimmed}" added successfully`);
+      setCategoryForm({ name: "", description: "" });
+      setShowCategoryModal(false);
+    } catch (err) {
+      showToast(err.message || "Failed to add category", "error");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (catName) => {
+    if (DEFAULT_CATEGORIES.includes(catName)) {
+      return showToast("Cannot delete system default categories", "error");
+    }
+    const inUseCount = products.filter(p => p.category?.toLowerCase() === catName.toLowerCase()).length;
+    if (inUseCount > 0) {
+      return showToast(`Cannot delete: ${inUseCount} product(s) currently use "${catName}"`, "error");
+    }
+    if (!confirm(`Delete category "${catName}"?`)) return;
+    try {
+      await deleteProductCategory(catName);
+      setCategories(prev => prev.filter(c => c !== catName));
+      if (selectedCategory === catName) setSelectedCategory("All");
+      showToast(`Category "${catName}" removed`);
+    } catch (err) {
+      showToast(err.message || "Failed to delete category", "error");
     }
   };
 
@@ -354,13 +420,22 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Category</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">Category</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryModal(true)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                    >
+                      + New
+                    </button>
+                  </div>
                   <select
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     value={form.category}
                     onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                   >
-                    {CATEGORIES.filter(c => c !== "All").map(c => <option key={c}>{c}</option>)}
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -555,17 +630,138 @@ export default function ProductsPage() {
         </div>
       )}
 
+      {/* Add Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900">Manage Categories</h3>
+                  <p className="text-xs text-gray-500">Create new product category or inspect catalog</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowCategoryModal(false); setCategoryForm({ name: "", description: "" }); }}
+                className="text-gray-400 hover:text-gray-600 text-lg p-1 rounded-md cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Instrumentation, Robotics, Hydraulics"
+                  className="w-full border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={categoryForm.name}
+                  onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Description <span className="text-gray-400 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Brief notes about products in this category"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={categoryForm.description}
+                  onChange={e => setCategoryForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowCategoryModal(false); setCategoryForm({ name: "", description: "" }); }}
+                  className="flex-1 border rounded-lg py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCategory || !categoryForm.name.trim()}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg py-2 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  {savingCategory ? "Adding…" : "+ Add Category"}
+                </button>
+              </div>
+            </form>
+
+            {/* Existing Categories List */}
+            <div className="mt-5 pt-4 border-t">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                  Existing Categories ({categories.length})
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+                {categories.map(cat => {
+                  const count = products.filter(p => p.category?.toLowerCase() === cat.toLowerCase()).length;
+                  const isDefault = DEFAULT_CATEGORIES.includes(cat);
+                  return (
+                    <span
+                      key={cat}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200"
+                    >
+                      <span>{cat}</span>
+                      <span className="text-[10px] text-gray-500 font-bold bg-white px-1.5 py-0.2 rounded-full border border-gray-200">
+                        {count}
+                      </span>
+                      {!isDefault && count === 0 && (
+                        <button
+                          type="button"
+                          title="Delete unused category"
+                          onClick={() => handleDeleteCategory(cat)}
+                          className="hover:text-red-600 text-gray-400 transition-colors ml-0.5 cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         breadcrumb="Products & Inventory / Product Master"
         title="Product Master"
         subtitle="Central catalog with SKU, HSN codes, GST rates, supplier sourcing, stock levels, warehouse locations and serial tracking"
         actions={
-          <button
-            onClick={openCreate}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
-          >
-            + Add Product
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl text-sm font-semibold shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              + Add Category
+            </button>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              + Add Product
+            </button>
+          </div>
         }
       />
 
@@ -578,11 +774,11 @@ export default function ProductsPage() {
 
       {/* Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4">
-        {CATEGORIES.map(cat => (
+        {["All", ...categories].map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
               selectedCategory === cat
                 ? "bg-blue-600 text-white shadow-sm"
                 : "bg-white border text-gray-600 hover:bg-gray-50"

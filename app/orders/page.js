@@ -53,6 +53,17 @@ export default function SalesOrdersPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setForm(emptyForm);
+        setEditingId(null);
+        setShowForm(true);
+      }
+    }
+  }, []);
+
   const recalc = (items, isInterState) => items.map(i => calcItem(i, isInterState));
   const totals = calcTotals(form.items, form.isInterState);
 

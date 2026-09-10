@@ -54,6 +54,17 @@ export default function DeliveriesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setForm(emptyForm);
+        setEditingId(null);
+        setShowForm(true);
+      }
+    }
+  }, []);
+
   const handleCustomerSelect = (custId) => {
     const c = customers.find(c => c._id === custId || c.id === custId);
     if (!c) return;

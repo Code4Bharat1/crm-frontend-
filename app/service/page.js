@@ -146,6 +146,15 @@ export default function ServiceRequestsPage() {
     loadData();
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setShowCreateModal(true);
+      }
+    }
+  }, []);
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     loadData();

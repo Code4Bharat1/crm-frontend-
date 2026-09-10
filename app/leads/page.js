@@ -307,7 +307,7 @@ export default function LeadsPage() {
                         const initials = (l.salesperson || "AI").split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
                         const firstName = (l.salesperson || "AI").split(' ')[0];
                         const isRepliedViaGmail = (l.notes && l.notes.includes("[Replied via Gmail]")) || l.lastRepliedAt;
-                        
+
                         return (
                           <tr key={l.id} className="transition-colors hover:bg-muted/30">
                             <td className="p-4 align-top">
@@ -436,11 +436,10 @@ export default function LeadsPage() {
                   <button
                     type="button"
                     onClick={() => applyTemplate("followup")}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
-                      emailType === "followup"
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${emailType === "followup"
                         ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
                         : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     <span>Follow-up</span>
                     <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Contacted</span>
@@ -449,11 +448,10 @@ export default function LeadsPage() {
                   <button
                     type="button"
                     onClick={() => applyTemplate("quotation")}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
-                      emailType === "quotation"
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${emailType === "quotation"
                         ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
                         : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     <span>Quotation</span>
                     <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Quotation Sent</span>
@@ -462,11 +460,10 @@ export default function LeadsPage() {
                   <button
                     type="button"
                     onClick={() => applyTemplate("meeting")}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
-                      emailType === "meeting"
+                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${emailType === "meeting"
                         ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
                         : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     <span>Meeting</span>
                     <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Potential</span>

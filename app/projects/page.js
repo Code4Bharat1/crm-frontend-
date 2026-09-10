@@ -112,6 +112,15 @@ export default function ProjectsPage() {
     loadData();
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setShowModal(true);
+      }
+    }
+  }, []);
+
   // Intelligent Auto-Fetch logic for projects
   const getAutoFetchedProjectData = (custId, custList = customers, ordersList = salesOrders, quotesList = quotations) => {
     const selectedCust = custList.find((c) => (c.id || c._id) === custId) || custList[0];

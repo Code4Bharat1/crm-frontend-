@@ -40,6 +40,17 @@ export default function PaymentsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setSelectedTarget({ type: "invoice", id: "" });
+        setPaymentForm({ amount: "", mode: "NEFT", reference: "", notes: "" });
+        setShowModal(true);
+      }
+    }
+  }, []);
+
   // Aggregate all payments across invoices and proformas
   const allReceipts = [];
 

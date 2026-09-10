@@ -63,6 +63,17 @@ export default function CustomersPage() {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("action") === "create" || p.get("create") === "true") {
+        setForm(emptyForm);
+        setEditingId(null);
+        setShowModal(true);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     getSalespeople()
       .then((sp) => {
         if (Array.isArray(sp) && sp.length > 0) {

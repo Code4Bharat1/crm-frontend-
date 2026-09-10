@@ -387,15 +387,15 @@ export default function Page() {
     <div className="space-y-6 pb-12">
       {/* Header & Main Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PageHeader 
-          breadcrumb={isAdmin ? "People / Attendance & Workforce" : "Employee Self-Service / Attendance"} 
-          title={isAdmin ? "Attendance & Biometric Registry (Admin Panel)" : "My Attendance & Shift Log (Employee Panel)"} 
-          subtitle={isAdmin 
+        <PageHeader
+          breadcrumb={isAdmin ? "People / Attendance & Workforce" : "Employee Self-Service / Attendance"}
+          title={isAdmin ? "Attendance & Biometric Registry (Admin Panel)" : "My Attendance & Shift Log (Employee Panel)"}
+          subtitle={isAdmin
             ? "Real biometric attendance logs, daily check-in/out records, leave tracking, and overtime analytics across all employees."
-            : "Clock in and clock out for your daily shifts, track personal attendance, and view your overtime hours."} 
+            : "Clock in and clock out for your daily shifts, track personal attendance, and view your overtime hours."}
         />
         <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-         
+
 
           <Button
             variant="outline"
@@ -567,11 +567,10 @@ export default function Page() {
           <button
             type="button"
             onClick={() => setActiveTab("records")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "records"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "records"
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-            }`}
+              }`}
           >
             <Clock className="w-4 h-4" />
             {isAdmin ? `Daily Attendance Ledger (${attendanceTotal || attendanceRecords.length})` : `My Attendance Records (${attendanceTotal || attendanceRecords.length})`}
@@ -580,11 +579,10 @@ export default function Page() {
           <button
             type="button"
             onClick={() => setActiveTab("summary")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "summary"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "summary"
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-            }`}
+              }`}
           >
             <Users className="w-4 h-4" />
             {isAdmin ? `Monthly Employee Summary (${summary.length || employees.length})` : `My Monthly Summary`}
@@ -593,11 +591,10 @@ export default function Page() {
           <button
             type="button"
             onClick={() => setActiveTab("claims")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "claims"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "claims"
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-            }`}
+              }`}
           >
             <Briefcase className="w-4 h-4" />
             {isAdmin ? `Expense Claims (${claims.length})` : `My Expense Claims (${claims.length})`}
@@ -913,9 +910,9 @@ export default function Page() {
           <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
             <h3 className="text-sm font-bold text-gray-900">Workforce Expense Claims & Travel Allowances</h3>
             <div className="flex gap-2">
-              <Input 
-                placeholder="Search claims..." 
-                value={searchTerm} 
+              <Input
+                placeholder="Search claims..."
+                value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-56 h-9 text-xs bg-gray-50"
               />
@@ -930,8 +927,8 @@ export default function Page() {
               <div className="py-10 text-center text-muted-foreground text-xs">Loading expense claims...</div>
             ) : (
               <>
-                <DataTable 
-                  rows={claims} 
+                <DataTable
+                  rows={claims}
                   columns={[
                     { header: "Claim ID", cell: (r) => <span className="font-mono font-bold text-xs">{r.claimId}</span> },
                     { header: "Employee", cell: (r) => <span className="font-semibold text-xs text-gray-800">{r.employeeId?.fullName || "Staff"}</span> },
@@ -940,25 +937,25 @@ export default function Page() {
                     { header: "Amount", cell: (r) => <span className="font-bold text-xs text-gray-900">{inr(r.amount)}</span> },
                     { header: "Project", cell: (r) => <span className="text-xs text-gray-600">{r.project || "—"}</span> },
                     { header: "Status", cell: (r) => <StatusBadge value={r.status} /> },
-                  ]} 
+                  ]}
                 />
 
                 <div className="p-3.5 bg-gray-50/80 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
                   <span>Page {claimsPage} of {claimsTotalPages || 1}</span>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={claimsPage <= 1} 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={claimsPage <= 1}
                       onClick={() => fetchClaims(claimsPage - 1, searchTerm)}
                       className="h-8 text-xs"
                     >
                       Previous
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={claimsPage >= claimsTotalPages} 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={claimsPage >= claimsTotalPages}
                       onClick={() => fetchClaims(claimsPage + 1, searchTerm)}
                       className="h-8 text-xs"
                     >

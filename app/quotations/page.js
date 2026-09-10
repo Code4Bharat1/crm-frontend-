@@ -111,6 +111,12 @@ function QuotationsContent() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (searchParams.get("action") === "create" || searchParams.get("create") === "true") {
+      setShowForm(true);
+    }
+  }, [searchParams]);
+
   const recalc = (items, isInterState) => items.map(i => calcItem(i, isInterState));
   const totals = calcTotals(form.items, form.isInterState);
 

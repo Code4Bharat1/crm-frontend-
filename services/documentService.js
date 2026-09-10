@@ -134,6 +134,9 @@ export const createProduct = (data) => req('/products', { method: 'POST', body: 
 export const updateProduct = (id, data) => req(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteProduct = (id) => req(`/products/${id}`, { method: 'DELETE' });
 export const adjustProductStock = (id, data) => req(`/products/${id}/adjust-stock`, { method: 'POST', body: JSON.stringify(data) });
+export const getProductCategories = () => req('/products/categories');
+export const createProductCategory = (data) => req('/products/categories', { method: 'POST', body: JSON.stringify(data) });
+export const deleteProductCategory = (id) => req(`/products/categories/${id}`, { method: 'DELETE' });
 
 // ─── Serial Numbers ──────────────────────────────────────────────────────────
 export const getSerialNumbers = (params = {}) => req('/serial-numbers?' + new URLSearchParams(params));

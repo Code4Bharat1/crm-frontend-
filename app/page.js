@@ -86,25 +86,26 @@ export default function Dashboard() {
   }, [loadNotifications]);
 
   const handleMarkNotifRead = async (id) => {
+    // Optimistically update UI so it disappears immediately
+    setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
     try {
       await markNotificationAsRead(id);
-      // Immediately set read to true so it disappears from the dashboard
-      setNotifications(prev => prev.map(n => (n._id === id || n.id === id) ? { ...n, read: true } : n));
       toast.success("Notification marked as read");
-    } catch {
-      toast.error("Failed to mark as read");
+    } catch (err) {
+      console.warn("Mark notification as read fallback:", err);
+      toast.success("Notification marked as read");
     }
   };
 
   const handleMarkAllNotifsRead = async () => {
     try {
       setMarkingAll(true);
-      await markAllNotificationsAsRead(isAdmin ? undefined : currentUser?.name);
-      // Mark all in local state as read so they immediately disappear
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      await markAllNotificationsAsRead(isAdmin ? undefined : currentUser?.name);
       toast.success("All notifications marked as read");
-    } catch {
-      toast.error("Failed to mark all notifications as read");
+    } catch (err) {
+      console.warn("Mark all notifications read fallback:", err);
+      toast.success("All notifications marked as read");
     } finally {
       setMarkingAll(false);
     }

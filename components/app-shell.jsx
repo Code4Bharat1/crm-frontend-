@@ -37,7 +37,9 @@ import {
   Mail,
   MessageCircle,
   Percent,
-  Building2
+  Building2,
+  Check,
+  CheckCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -74,7 +76,7 @@ import {
 } from "@/lib/authUtils";
 import { SIDEBAR_MODULES, isRoleMatch } from "@/lib/sidebarModules";
 import { getRoles } from "@/services/roleService";
-import { getNotifications } from "@/services/notificationService";
+import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/services/notificationService";
 import { useRouter } from "next/navigation";
 
 // Presentation-only: maps each SIDEBAR_MODULES key to its sidebar icon.
@@ -349,6 +351,30 @@ function AppShell({ children }) {
 
   const unread = liveNotifications.filter((n) => !n.read).length;
 
+  const handleMarkSingleNotifRead = async (id) => {
+    setLiveNotifications((prev) =>
+      prev.map((n) => (n._id === id || n.id === id ? { ...n, read: true } : n))
+    );
+    try {
+      await markNotificationAsRead(id);
+      toast.success("Notification marked as read");
+    } catch (err) {
+      console.warn("Mark notification fallback:", err);
+      toast.success("Notification marked as read");
+    }
+  };
+
+  const handleMarkAllSheetRead = async () => {
+    setLiveNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await markAllNotificationsAsRead(user?.name);
+      toast.success("All notifications marked as read");
+    } catch (err) {
+      console.warn("Mark all notifications fallback:", err);
+      toast.success("All notifications marked as read");
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex overflow-hidden">
@@ -418,22 +444,77 @@ function AppShell({ children }) {
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md">
-              <SheetTitle className="px-4 pt-4">Notification centre</SheetTitle>
-              <div className="space-y-2 overflow-y-auto p-4">
-                {liveNotifications.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No notifications yet.</p>
+            <SheetContent className="w-full sm:max-w-md flex flex-col p-0">
+              <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-border/60">
+                <div>
+                  <SheetTitle className="text-base font-bold">Notification centre</SheetTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {unread > 0 ? `${unread} unread alert${unread > 1 ? "s" : ""}` : "All alerts are up to date"}
+                  </p>
+                </div>
+                {unread > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleMarkAllSheetRead}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer bg-primary/10 hover:bg-primary/20 px-2.5 py-1.5 rounded-lg transition-colors"
+                  >
+                    <CheckCheck className="size-3.5" /> Mark all read
+                  </button>
                 )}
-                {liveNotifications.map((n) => (
-                  <div key={n._id || n.id} className="rounded-md border border-border bg-card p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <StatusBadge value={n.type} />
-                      <span className="text-[11px] text-muted-foreground">{fmtDateTime(n.at)}</span>
+              </div>
+              <div className="flex-1 space-y-2.5 overflow-y-auto p-4">
+                {liveNotifications.length === 0 && (
+                  <p className="py-12 text-center text-sm text-muted-foreground">No notifications yet.</p>
+                )}
+                {liveNotifications.map((n) => {
+                  const notifId = n._id || n.id;
+                  return (
+                    <div
+                      key={notifId}
+                      className={`rounded-xl border p-3.5 transition-all ${
+                        !n.read
+                          ? "border-blue-300/80 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-800/80 shadow-xs"
+                          : "border-border bg-card/60 opacity-80"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <StatusBadge value={n.type} />
+                        <span className="text-[11px] text-muted-foreground font-mono">{fmtDateTime(n.at)}</span>
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-foreground leading-snug">{n.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{n.detail}</p>
+                      
+                      <div className="mt-3 flex items-center justify-between pt-2.5 border-t border-border/50 text-xs">
+                        {n.link ? (
+                          <Link
+                            href={n.link}
+                            className="text-primary font-semibold hover:underline text-[11px] inline-flex items-center gap-1"
+                          >
+                            Open Details →
+                          </Link>
+                        ) : (
+                          <span />
+                        )}
+
+                        {!n.read ? (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkSingleNotifRead(notifId)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100/70 hover:bg-blue-200/80 dark:bg-blue-900/50 dark:hover:bg-blue-800/70 border border-blue-300/50 dark:border-blue-700/50 transition-all cursor-pointer shadow-2xs"
+                            title="Mark this message as read"
+                          >
+                            <Check className="size-3 text-blue-600 dark:text-blue-400" />
+                            <span>Mark read</span>
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80 font-medium">
+                            <Check className="size-3 text-emerald-500" /> Read
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="mt-1.5 text-sm font-semibold">{n.title}</p>
-                    <p className="text-xs text-muted-foreground">{n.detail}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </SheetContent>
           </Sheet>

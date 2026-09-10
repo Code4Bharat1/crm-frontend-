@@ -52,9 +52,6 @@ export default function ServiceRequestsPage() {
   const [products, setProducts] = useState([]);
   const [serialNumbers, setSerialNumbers] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [serviceNotifications, setServiceNotifications] = useState([]);
-  const [selectedTechFilter, setSelectedTechFilter] = useState("All");
-  const [showTechPanel, setShowTechPanel] = useState(true);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -107,20 +104,16 @@ export default function ServiceRequestsPage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [reqRes, custRes, projRes, prodRes, snRes, empRes, notifRes] = await Promise.all([
+      const [reqRes, custRes, projRes, prodRes, snRes, empRes] = await Promise.all([
         getServiceRequests({ status: statusFilter, search }),
         getCustomers().catch(() => ({ customers: [] })),
         getProjects().catch(() => ({ projects: [] })),
         getProducts().catch(() => []),
-
-
-        
         getSerialNumbers().catch(() => []),
-        getEmployees({ limit: 100 }).catch(() => ({ data: { employees: [] } })),
-        getNotifications({ type: "Service", limit: 50 }).catch(() => ({ notifications: [] }))
+        getEmployees({ limit: 100 }).catch(() => ({ data: { employees: [] } }))
       ]);
 
       setRequests(reqRes.requests || []);
@@ -132,19 +125,16 @@ export default function ServiceRequestsPage() {
 
       const rawEmps = empRes?.data?.employees || empRes?.employees || (Array.isArray(empRes) ? empRes : []);
       setEmployees(rawEmps);
-
-      const notifs = notifRes?.notifications || (Array.isArray(notifRes) ? notifRes : []);
-      setServiceNotifications(notifs);
     } catch (err) {
       showToast(err.message, "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, search]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -475,31 +465,7 @@ export default function ServiceRequestsPage() {
     }
   };
 
-  // Filter notifications based on selected technician
-  const filteredNotifications = useMemo(() => {
-    if (selectedTechFilter === "All") return serviceNotifications;
-    return serviceNotifications.filter(
-      (n) => (n.recipient || "").toLowerCase() === selectedTechFilter.toLowerCase()
-    );
-  }, [serviceNotifications, selectedTechFilter]);
 
-  const uniqueTechnicians = useMemo(() => {
-    const set = new Set();
-    serviceNotifications.forEach((n) => {
-      if (n.recipient && n.recipient !== "all") set.add(n.recipient);
-    });
-    employees.forEach((e) => {
-      const r = (e.role || "").toLowerCase();
-      if (r.includes("tech") || r.includes("engineer") || r.includes("service") || r.includes("field")) {
-        set.add(e.fullName);
-      }
-    });
-    return Array.from(set);
-  }, [serviceNotifications, employees]);
-
-  const unreadNotifCount = useMemo(() => {
-    return serviceNotifications.filter((n) => !n.read).length;
-  }, [serviceNotifications]);
 
   return (
     <>

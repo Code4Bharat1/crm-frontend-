@@ -16,7 +16,8 @@ import {
 import { ChainStrip, FilterBar, Kpi, PageHeader, Section, StatusBadge, Timeline } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 import { fmtDate, inrShort } from "@/lib/crm-data";
-import { AttendanceWidget } from "@/components/AttendanceWidget";
+import { AdminAttendanceSummary } from "@/components/AdminAttendanceSummary";
+import { EmployeeAttendanceDashboard } from "@/components/EmployeeAttendanceDashboard";
 import { getNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/services/notificationService";
 import { getUser } from "@/lib/authUtils";
 import { getDashboardOverview } from "@/lib/api";
@@ -79,7 +80,7 @@ export default function Dashboard() {
     const u = getUser();
     setCurrentUser(u);
     const r = (u?.role || '').toLowerCase().trim();
-    const admin = r === 'admin' || r === 'director' || r === 'admin manager';
+    const admin = r === 'admin' || r === 'director' || r === 'admin manager' || r === 'hr';
     setIsAdmin(admin);
 
     loadNotifications();
@@ -201,7 +202,10 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {!isAdmin && <AttendanceWidget />}
+      {/* ─── LIVE ATTENDANCE: ADMIN WORKFORCE SUMMARY vs EMPLOYEE PERSONAL PUNCH & HISTORY ─── */}
+      <div className="mt-3 mb-1">
+        {isAdmin ? <AdminAttendanceSummary /> : <EmployeeAttendanceDashboard />}
+      </div>
 
       {/* ─── COMPACT LATEST NOTIFICATIONS FEED (MAX 4, UNREAD ONLY, NOT CARDS) ─── */}
       {displayedNotifs.length > 0 && (

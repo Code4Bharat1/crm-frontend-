@@ -11,8 +11,14 @@
  *   onClose   — callback to close the print modal
  */
 
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { fmtDate, fmtINR } from "@/services/documentService";
+
+const cleanStr = (val) => {
+  if (!val) return '';
+  if (typeof val !== 'string') return String(val);
+  return val.trim().replace(/^["'\s]+|["'\s]+$/g, '').trim();
+};
 
 const docTypeConfig = {
   "Quotation":        { color: "#2563eb", accent: "#dbeafe", label: "QUOTATION",        noField: "quotationNo" },
@@ -33,7 +39,7 @@ const resolveMediaUrl = (url) => {
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-export function DocumentPrintView({ doc, type, company, onClose }) {
+export function DocumentPrintView({ doc, type, company, onClose, embedded = false }) {
   const printRef = useRef();
   const cfg = docTypeConfig[type] || docTypeConfig["Quotation"];
   const docNo = doc[cfg.noField] || doc.id || "—";
@@ -44,6 +50,23 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
   const isDelivery = type === "Delivery Note";
   const isInvoice = type === "Sales Invoice";
   const isPO = type === "Purchase Order";
+
+  const handleClose = () => {
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (embedded) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [embedded, onClose]);
 
   const handlePrint = () => {
     const content = printRef.current?.innerHTML;
@@ -90,33 +113,8 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
     setTimeout(() => win.print(), 500);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 overflow-y-auto py-6 px-2">
-      {/* Toolbar */}
-      <div className="fixed top-0 left-0 right-0 z-10 flex items-center justify-between bg-gray-900 px-6 py-3 shadow-lg no-print" style={{ printVisibility: 'hidden' }}>
-        <span className="text-white font-semibold text-sm">{cfg.label} — {docNo}</span>
-        <div className="flex gap-3">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            🖨️ Print / Download PDF
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            ✕ Close
-          </button>
-        </div>
-      </div>
-
-      {/* Document */}
-      <div
-        ref={printRef}
-        className="bg-white w-full max-w-4xl shadow-2xl rounded-xl mt-14 print:mt-0 print:shadow-none overflow-hidden"
-        style={{ fontFamily: "'Arial', sans-serif", fontSize: "12px", color: "#111" }}
-      >
+  const letterheadBody = (
+    <>
         {/* ─── LETTERHEAD ─────────────────────────────────────────── */}
         <div style={{ borderTop: `6px solid ${cfg.color}`, padding: "24px 32px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -194,10 +192,10 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
               <div style={{ fontSize: "9px", fontWeight: "700", color: cfg.color, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px" }}>
                 {partyLabel}
               </div>
-              <div style={{ fontWeight: "700", fontSize: "13px" }}>{party?.name}</div>
+              <div style={{ fontWeight: "700", fontSize: "13px" }}>{cleanStr(party?.name)}</div>
               {party?.address && <div style={{ color: "#475569", fontSize: "10px", marginTop: "4px" }}>{party.address}</div>}
               {party?.gstNumber && <div style={{ fontSize: "10px", marginTop: "4px" }}>GST: <strong>{party.gstNumber}</strong></div>}
-              {party?.contactPerson && <div style={{ fontSize: "10px", color: "#6b7280" }}>Attn: {party.contactPerson}</div>}
+              {party?.contactPerson && <div style={{ fontSize: "10px", color: "#6b7280" }}>Attn: {cleanStr(party.contactPerson?.name || party.contactPerson)}</div>}
               {party?.phone && <div style={{ fontSize: "10px", color: "#6b7280" }}>📞 {party.phone}</div>}
               {party?.email && <div style={{ fontSize: "10px", color: "#6b7280" }}>✉ {party.email}</div>}
             </div>
@@ -220,13 +218,13 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
               {doc.soRef && <div style={{ fontSize: "10px" }}>Sales Order: <strong>{doc.soRef}</strong></div>}
               {doc.dnRef && <div style={{ fontSize: "10px" }}>Delivery Note: <strong>{doc.dnRef}</strong></div>}
               {doc.poReference && <div style={{ fontSize: "10px" }}>Customer PO: <strong>{doc.poReference}</strong></div>}
-              {doc.salesperson && <div style={{ fontSize: "10px", marginTop: "4px" }}>Salesperson: <strong>{doc.salesperson}</strong></div>}
+              {doc.salesperson && <div style={{ fontSize: "10px", marginTop: "4px" }}>Salesperson: <strong>{cleanStr(doc.salesperson)}</strong></div>}
             </div>
           </div>
 
           {doc.subject && (
             <div style={{ background: cfg.accent, borderLeft: `4px solid ${cfg.color}`, padding: "8px 12px", borderRadius: "4px", marginBottom: "12px", fontSize: "11px" }}>
-              <strong>Subject:</strong> {doc.subject}
+              <strong>Subject:</strong> {cleanStr(doc.subject)}
             </div>
           )}
         </div>
@@ -394,6 +392,76 @@ export function DocumentPrintView({ doc, type, company, onClose }) {
             <span>Page 1 of 1</span>
           </div>
         </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="w-full flex flex-col items-center">
+        {/* Inline Action Bar */}
+        <div className="w-full max-w-4xl flex items-center justify-between pb-3 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: cfg.color }} />
+            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">{cfg.label} Letterhead Preview</span>
+            <span className="text-xs text-gray-400 font-mono">({docNo})</span>
+          </div>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+          >
+            🖨️ Print / Download PDF
+          </button>
+        </div>
+
+        {/* Letterhead Document */}
+        <div
+          ref={printRef}
+          className="bg-white w-full max-w-4xl border border-gray-200 shadow-sm rounded-xl overflow-hidden print:border-none print:shadow-none"
+          style={{ fontFamily: "'Arial', sans-serif", fontSize: "12px", color: "#111" }}
+        >
+          {letterheadBody}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6 px-2"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      {/* Toolbar */}
+      <div className="fixed top-0 left-0 right-0 z-10 flex items-center justify-between bg-gray-900/95 backdrop-blur px-6 py-3 shadow-lg no-print" style={{ printVisibility: 'hidden' }}>
+        <span className="text-white font-semibold text-sm">{cfg.label} — {docNo}</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer shadow"
+          >
+            🖨️ Print / Download PDF
+          </button>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex items-center gap-1.5 bg-gray-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            title="Close (Esc)"
+          >
+            ✕ Close
+          </button>
+        </div>
+      </div>
+
+      {/* Document */}
+      <div
+        ref={printRef}
+        className="bg-white w-full max-w-4xl shadow-2xl rounded-xl mt-14 print:mt-0 print:shadow-none overflow-hidden"
+        style={{ fontFamily: "'Arial', sans-serif", fontSize: "12px", color: "#111" }}
+      >
+        {letterheadBody}
       </div>
     </div>
   );

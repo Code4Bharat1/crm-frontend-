@@ -883,6 +883,7 @@ export default function CompanySettingsPage() {
                 doc={sampleDocData}
                 type="Sales Invoice"
                 company={form}
+                embedded={true}
                 onClose={() => setActiveTab("general")}
               />
             </div>

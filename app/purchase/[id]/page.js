@@ -84,7 +84,7 @@ export default function PurchaseOrderDetailPage() {
         <div className="border rounded-2xl overflow-hidden shadow-sm">
           <div className="bg-gray-50 border-b px-4 py-2 text-xs text-gray-500 font-medium">Document Preview</div>
           <div className="bg-white p-4">
-            <DocumentPrintView doc={doc} type="Purchase Order" company={company} onClose={() => {}} />
+            <DocumentPrintView doc={doc} type="Purchase Order" company={company} embedded={true} />
           </div>
         </div>
       )}

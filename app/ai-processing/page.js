@@ -138,9 +138,12 @@ export default function AiPage() {
       const validStages = ["New", "Contacted", "Potential", "Hot", "Quotation Sent", "Negotiation", "Won", "Lost", "On Hold"];
       const stageToSave = validStages.includes(cleanStage) ? cleanStage : "New";
 
+      const rawCust = isBlank(formData.customer) ? senderName : formData.customer;
+      const cleanCustomer = (rawCust || 'Unknown Customer').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+
       const payload = {
         id: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
-        customerName: isBlank(formData.customer) ? senderName : formData.customer,
+        customerName: cleanCustomer,
         source: "Email Inquiry",
         stage: stageToSave,
         priority: ["Low", "Medium", "High", "Critical"].includes(formData.suggestedPriority) ? formData.suggestedPriority : "Medium",

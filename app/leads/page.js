@@ -240,7 +240,7 @@ export default function LeadsPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Kpi label="Total leads" value={leads.length} icon={UserPlus} />
         <Kpi label="New" value={leads.filter(l => l.stage === 'New').length} tone="accent" />
         <Kpi
@@ -250,6 +250,12 @@ export default function LeadsPage() {
           icon={Mail}
         />
         <Kpi label="Hot" value={leads.filter(l => l.stage === 'Hot').length} tone="danger" icon={Flame} />
+        <Kpi
+          label="Quotation Sent"
+          value={leads.filter(l => l.stage === 'Quotation Sent').length}
+          tone="primary"
+          icon={FileText}
+        />
         <Kpi label="Won" value={leads.filter(l => l.stage === 'Won').length} tone="success" />
       </div>
 
@@ -308,16 +314,27 @@ export default function LeadsPage() {
                         const firstName = (l.salesperson || "AI").split(' ')[0];
                         const isRepliedViaGmail = (l.notes && l.notes.includes("[Replied via Gmail]")) || l.lastRepliedAt;
 
+                        const cleanCustomerName = (l.customerName || 'Unnamed Lead').replace(/^["'\s]+|["'\s]+$/g, '');
+
                         return (
                           <tr key={l.id} className="transition-colors hover:bg-muted/30">
                             <td className="p-4 align-top">
                               <div className="flex flex-col gap-2">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <Link href={`/customers/${l.customerId || "CUST-1001"}`} className="text-sm font-semibold text-primary hover:underline">
-                                    {l.customerName}
+                                    {cleanCustomerName}
                                   </Link>
                                   <StatusBadge value={l.stage} />
                                   <StatusBadge value={l.priority} />
+                                  {l.stage === 'Quotation Sent' && (
+                                    <Link
+                                      href="/quotations"
+                                      className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+                                      title="View in Quotations module"
+                                    >
+                                      <FileText className="size-3" /> Quotation Active
+                                    </Link>
+                                  )}
                                   {isRepliedViaGmail && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20">
                                       <Mail className="size-3" /> Replied via Gmail

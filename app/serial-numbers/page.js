@@ -33,10 +33,12 @@ export default function SerialNumbersPage() {
   const [salesOrders, setSalesOrders] = useState([]);
   const [deliveryNotes, setDeliveryNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchingDocs, setFetchingDocs] = useState(false);
   const [statusFilter, setStatusFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [customMode, setCustomMode] = useState({ customer: false, so: false, dn: false });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -47,6 +49,7 @@ export default function SerialNumbersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setFetchingDocs(true);
     try {
       const [sList, pList, cList, soList, dnList] = await Promise.all([
         getSerialNumbers().catch(() => []),
@@ -64,6 +67,7 @@ export default function SerialNumbersPage() {
       console.error(err);
     } finally {
       setLoading(false);
+      setFetchingDocs(false);
     }
   }, []);
 
@@ -72,6 +76,7 @@ export default function SerialNumbersPage() {
   const openCreate = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setCustomMode({ customer: false, so: false, dn: false });
     setShowForm(true);
   };
 
@@ -83,6 +88,11 @@ export default function SerialNumbersPage() {
       warrantyEnd: s.warrantyEnd ? s.warrantyEnd.slice(0, 10) : "",
     });
     setEditingId(s.serialNo || s._id);
+    setCustomMode({
+      customer: Boolean(s.customer?.name && !customers.some(c => c.name === s.customer?.name)),
+      so: Boolean(s.soRef && !salesOrders.some(so => so.soNo === s.soRef)),
+      dn: Boolean(s.dnRef && !deliveryNotes.some(dn => dn.dnNo === s.dnRef)),
+    });
     setShowForm(true);
   };
 
@@ -93,6 +103,85 @@ export default function SerialNumbersPage() {
       ...f,
       product: { id: p._id, itemCode: p.itemCode, name: p.name },
       location: p.location || f.location,
+    }));
+  };
+
+  const handleSalesOrderSelect = (soNo) => {
+    if (soNo === "__custom__") {
+      setCustomMode(m => ({ ...m, so: true }));
+      return;
+    }
+    if (!soNo) {
+      setForm(f => ({ ...f, soRef: "" }));
+      return;
+    }
+    const so = salesOrders.find(s => s.soNo === soNo);
+    if (!so) {
+      setForm(f => ({ ...f, soRef: soNo }));
+      return;
+    }
+
+    const custName = so.customer?.name || "";
+    const custId = so.customer?.id || so.customer?._id || "";
+    const matchedDn = deliveryNotes.find(d => d.soRef === so.soNo);
+
+    setForm(f => ({
+      ...f,
+      soRef: so.soNo,
+      customer: custName ? { id: custId, name: custName } : f.customer,
+      dnRef: matchedDn ? matchedDn.dnNo : f.dnRef,
+      status: matchedDn ? "Dispatched" : (f.status === "In Stock" ? "Reserved" : f.status),
+    }));
+
+    if (custName) {
+      showToast(`Linked Customer (${custName}) from SO ${so.soNo}`, "info");
+    }
+  };
+
+  const handleDeliveryNoteSelect = (dnNo) => {
+    if (dnNo === "__custom__") {
+      setCustomMode(m => ({ ...m, dn: true }));
+      return;
+    }
+    if (!dnNo) {
+      setForm(f => ({ ...f, dnRef: "" }));
+      return;
+    }
+    const dn = deliveryNotes.find(d => d.dnNo === dnNo);
+    if (!dn) {
+      setForm(f => ({ ...f, dnRef: dnNo }));
+      return;
+    }
+
+    const custName = dn.customer?.name || "";
+    const custId = dn.customer?.id || dn.customer?._id || "";
+
+    setForm(f => ({
+      ...f,
+      dnRef: dn.dnNo,
+      soRef: dn.soRef || f.soRef,
+      customer: custName ? { id: custId, name: custName } : f.customer,
+      status: "Dispatched",
+    }));
+
+    if (custName || dn.soRef) {
+      showToast(`Linked ${custName ? 'Customer (' + custName + ')' : ''} ${dn.soRef ? '& SO ' + dn.soRef : ''} from DN ${dn.dnNo}`, "info");
+    }
+  };
+
+  const handleCustomerSelect = (custName) => {
+    if (custName === "__custom__") {
+      setCustomMode(m => ({ ...m, customer: true }));
+      return;
+    }
+    if (!custName) {
+      setForm(f => ({ ...f, customer: { id: "", name: "" } }));
+      return;
+    }
+    const c = customers.find(item => item.name === custName);
+    setForm(f => ({
+      ...f,
+      customer: { id: c?._id || c?.id || "", name: custName }
     }));
   };
 
@@ -231,15 +320,37 @@ export default function SerialNumbersPage() {
             </div>
 
             <form onSubmit={handleSave} className="space-y-4">
-              {/* Warehouse In-Stock Helper Banner */}
-              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3.5 text-xs text-purple-900 flex items-start gap-2.5">
-                <span className="text-base leading-none">💡</span>
-                <div className="space-y-0.5">
-                  <span className="font-bold">Adding new stock to warehouse?</span>
-                  <p className="text-purple-700 leading-relaxed">
-                    Only <strong>Serial Number</strong> and <strong>Product</strong> are required. You can leave <strong>Customer Assigned</strong>, <strong>Sales Order Ref</strong>, and <strong>Delivery Note Ref</strong> empty — they are optional and only filled once an item is allocated, sold, or dispatched.
-                  </p>
+              {/* Warehouse In-Stock Helper & Live Fetch Status Banner */}
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3.5 text-xs text-purple-900 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-base leading-none">💡</span>
+                  <div className="space-y-1">
+                    <span className="font-bold">Live Data Fetched from CRM</span>
+                    <p className="text-purple-700 leading-relaxed">
+                      <strong>Customer Assigned</strong>, <strong>Sales Order Ref</strong>, and <strong>Delivery Note Ref</strong> are fetched directly from your database. You can select an order to auto-populate the customer and challan, or leave them empty if this unit is currently in warehouse inventory.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800">
+                        ✓ {customers.length} Customers Fetched
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-800">
+                        ✓ {salesOrders.length} Sales Orders Fetched
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-800">
+                        ✓ {deliveryNotes.length} Delivery Notes Fetched
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={load}
+                  disabled={fetchingDocs}
+                  className="shrink-0 px-2.5 py-1.5 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg font-semibold text-xs shadow-sm flex items-center gap-1 transition-colors"
+                >
+                  <span className={fetchingDocs ? "animate-spin" : ""}>🔄</span>
+                  {fetchingDocs ? "Fetching…" : "Re-fetch"}
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -293,31 +404,55 @@ export default function SerialNumbersPage() {
                   />
                 </div>
 
+                {/* Customer Assigned */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-gray-700">Customer Assigned</label>
-                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                      Customer Assigned
+                      <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded">
+                        {customers.length} fetched
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMode(m => ({ ...m, customer: !m.customer }))}
+                        className="text-[10px] text-purple-600 hover:text-purple-800 underline font-medium"
+                      >
+                        {customMode.customer ? "Pick from list" : "Type manual"}
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    list="serialCustomerList"
-                    placeholder="Leave blank if in stock (or pick client)"
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-                    value={form.customer?.name || ""}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const matched = customers.find(c => c.name === val);
-                      setForm(f => ({ ...f, customer: { id: matched?._id || matched?.id || "", name: val } }));
-                    }}
-                  />
-                  <datalist id="serialCustomerList">
-                    {customers.map(c => (
-                      <option key={c._id || c.id} value={c.name} />
-                    ))}
-                  </datalist>
-                  <p className="text-[10px] text-gray-400 mt-1">Leave empty if unit is still in warehouse inventory.</p>
+
+                  {customMode.customer ? (
+                    <input
+                      type="text"
+                      placeholder="Type custom customer name..."
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                      value={form.customer?.name || ""}
+                      onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, name: e.target.value } }))}
+                      autoFocus
+                    />
+                  ) : (
+                    <select
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500"
+                      value={form.customer?.name || ""}
+                      onChange={e => handleCustomerSelect(e.target.value)}
+                    >
+                      <option value="">-- None (In Warehouse Stock / Unsold) --</option>
+                      {customers.map(c => (
+                        <option key={c._id || c.id} value={c.name}>
+                          {c.name} {c.area ? `(${c.area})` : ""}
+                        </option>
+                      ))}
+                      <option value="__custom__">✏️ Type Custom Customer Name...</option>
+                    </select>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1">Leave empty if unit is currently in warehouse inventory.</p>
                 </div>
 
+                {/* Warranty End Date */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-gray-700">Warranty End Date</label>
@@ -332,46 +467,100 @@ export default function SerialNumbersPage() {
                   <p className="text-[10px] text-gray-400 mt-1">Calculated from dispatch or installation date.</p>
                 </div>
 
+                {/* Sales Order Ref */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-gray-700">Sales Order Ref</label>
-                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                      Sales Order Ref
+                      <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] bg-blue-50 text-blue-700 font-semibold px-1.5 py-0.5 rounded">
+                        {salesOrders.length} fetched
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMode(m => ({ ...m, so: !m.so }))}
+                        className="text-[10px] text-purple-600 hover:text-purple-800 underline font-medium"
+                      >
+                        {customMode.so ? "Pick from list" : "Type manual"}
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    list="serialSoList"
-                    placeholder="Leave blank if unsold (e.g. SO-2026-001)"
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
-                    value={form.soRef || ""}
-                    onChange={e => setForm(f => ({ ...f, soRef: e.target.value }))}
-                  />
-                  <datalist id="serialSoList">
-                    {salesOrders.map(so => (
-                      <option key={so._id} value={so.soNo}>{so.customer?.name ? `(${so.customer.name})` : ''}</option>
-                    ))}
-                  </datalist>
-                  <p className="text-[10px] text-gray-400 mt-1">Reference of confirmed order from Sales Orders page.</p>
+
+                  {customMode.so ? (
+                    <input
+                      type="text"
+                      placeholder="e.g. SO-2026-001"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
+                      value={form.soRef || ""}
+                      onChange={e => setForm(f => ({ ...f, soRef: e.target.value }))}
+                      autoFocus
+                    />
+                  ) : (
+                    <select
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                      value={form.soRef || ""}
+                      onChange={e => handleSalesOrderSelect(e.target.value)}
+                    >
+                      <option value="">-- None (Unsold / In Stock) --</option>
+                      {salesOrders.map(so => (
+                        <option key={so._id} value={so.soNo}>
+                          {so.soNo} — {so.customer?.name || "Customer"} ({so.status})
+                        </option>
+                      ))}
+                      <option value="__custom__">✏️ Type Custom Sales Order Ref...</option>
+                    </select>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1">Selecting auto-fills Customer & matching Delivery Note.</p>
                 </div>
 
+                {/* Delivery Note Ref */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-gray-700">Delivery Note Ref</label>
-                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                      Delivery Note Ref
+                      <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] bg-purple-50 text-purple-700 font-semibold px-1.5 py-0.5 rounded">
+                        {deliveryNotes.length} fetched
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMode(m => ({ ...m, dn: !m.dn }))}
+                        className="text-[10px] text-purple-600 hover:text-purple-800 underline font-medium"
+                      >
+                        {customMode.dn ? "Pick from list" : "Type manual"}
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    list="serialDnList"
-                    placeholder="Leave blank if not shipped (e.g. DN-2026-001)"
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
-                    value={form.dnRef || ""}
-                    onChange={e => setForm(f => ({ ...f, dnRef: e.target.value }))}
-                  />
-                  <datalist id="serialDnList">
-                    {deliveryNotes.map(dn => (
-                      <option key={dn._id} value={dn.dnNo}>{dn.customer?.name ? `(${dn.customer.name})` : ''}</option>
-                    ))}
-                  </datalist>
-                  <p className="text-[10px] text-gray-400 mt-1">Dispatch challan reference from Delivery Notes page.</p>
+
+                  {customMode.dn ? (
+                    <input
+                      type="text"
+                      placeholder="e.g. DN-2026-001"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
+                      value={form.dnRef || ""}
+                      onChange={e => setForm(f => ({ ...f, dnRef: e.target.value }))}
+                      autoFocus
+                    />
+                  ) : (
+                    <select
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white font-mono focus:ring-2 focus:ring-purple-500"
+                      value={form.dnRef || ""}
+                      onChange={e => handleDeliveryNoteSelect(e.target.value)}
+                    >
+                      <option value="">-- None (Not Dispatched Yet) --</option>
+                      {deliveryNotes.map(dn => (
+                        <option key={dn._id} value={dn.dnNo}>
+                          {dn.dnNo} — {dn.customer?.name || "Customer"} {dn.soRef ? `(SO: ${dn.soRef})` : ""}
+                        </option>
+                      ))}
+                      <option value="__custom__">✏️ Type Custom Delivery Note Ref...</option>
+                    </select>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1">Selecting auto-fills Customer & Sales Order, sets Dispatched.</p>
                 </div>
 
                 <div className="col-span-2">

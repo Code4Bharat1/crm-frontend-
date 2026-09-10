@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   getSerialNumbers, createSerialNumber, updateSerialNumber, deleteSerialNumber,
-  getProducts, fmtDate
+  getProducts, fmtDate,
+  getCustomers, getSalesOrders, getDeliveryNotes
 } from "@/services/documentService";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 
@@ -28,6 +29,9 @@ const emptyForm = {
 export default function SerialNumbersPage() {
   const [serials, setSerials] = useState([]);
   const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [deliveryNotes, setDeliveryNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
@@ -44,12 +48,18 @@ export default function SerialNumbersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sList, pList] = await Promise.all([
+      const [sList, pList, cList, soList, dnList] = await Promise.all([
         getSerialNumbers().catch(() => []),
         getProducts().catch(() => []),
+        getCustomers().catch(() => []),
+        getSalesOrders().catch(() => []),
+        getDeliveryNotes().catch(() => []),
       ]);
       setSerials(Array.isArray(sList) ? sList : []);
       setProducts(Array.isArray(pList) ? pList : []);
+      setCustomers(Array.isArray(cList) ? cList : (cList?.customers || []));
+      setSalesOrders(Array.isArray(soList) ? soList : (soList?.data || []));
+      setDeliveryNotes(Array.isArray(dnList) ? dnList : (dnList?.data || []));
     } catch (err) {
       console.error(err);
     } finally {
@@ -221,6 +231,17 @@ export default function SerialNumbersPage() {
             </div>
 
             <form onSubmit={handleSave} className="space-y-4">
+              {/* Warehouse In-Stock Helper Banner */}
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3.5 text-xs text-purple-900 flex items-start gap-2.5">
+                <span className="text-base leading-none">💡</span>
+                <div className="space-y-0.5">
+                  <span className="font-bold">Adding new stock to warehouse?</span>
+                  <p className="text-purple-700 leading-relaxed">
+                    Only <strong>Serial Number</strong> and <strong>Product</strong> are required. You can leave <strong>Customer Assigned</strong>, <strong>Sales Order Ref</strong>, and <strong>Delivery Note Ref</strong> empty — they are optional and only filled once an item is allocated, sold, or dispatched.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Serial Number *</label>
@@ -254,7 +275,7 @@ export default function SerialNumbersPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
                   <select
-                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500"
                     value={form.status}
                     onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                   >
@@ -266,51 +287,91 @@ export default function SerialNumbersPage() {
                   <input
                     type="text"
                     placeholder="e.g. Warehouse A - Bay 1"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
                     value={form.location}
                     onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Customer Assigned</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Customer Assigned</label>
+                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="Customer Name (if dispatched/installed)"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    list="serialCustomerList"
+                    placeholder="Leave blank if in stock (or pick client)"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
                     value={form.customer?.name || ""}
-                    onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, name: e.target.value } }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const matched = customers.find(c => c.name === val);
+                      setForm(f => ({ ...f, customer: { id: matched?._id || matched?.id || "", name: val } }));
+                    }}
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Warranty End Date</label>
-                  <input
-                    type="date"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    value={form.warrantyEnd}
-                    onChange={e => setForm(f => ({ ...f, warrantyEnd: e.target.value }))}
-                  />
+                  <datalist id="serialCustomerList">
+                    {customers.map(c => (
+                      <option key={c._id || c.id} value={c.name} />
+                    ))}
+                  </datalist>
+                  <p className="text-[10px] text-gray-400 mt-1">Leave empty if unit is still in warehouse inventory.</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Sales Order Ref</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Warranty End Date</label>
+                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                  </div>
+                  <input
+                    type="date"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                    value={form.warrantyEnd}
+                    onChange={e => setForm(f => ({ ...f, warrantyEnd: e.target.value }))}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">Calculated from dispatch or installation date.</p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Sales Order Ref</label>
+                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. SO-2026-001"
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
+                    list="serialSoList"
+                    placeholder="Leave blank if unsold (e.g. SO-2026-001)"
+                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
                     value={form.soRef || ""}
                     onChange={e => setForm(f => ({ ...f, soRef: e.target.value }))}
                   />
+                  <datalist id="serialSoList">
+                    {salesOrders.map(so => (
+                      <option key={so._id} value={so.soNo}>{so.customer?.name ? `(${so.customer.name})` : ''}</option>
+                    ))}
+                  </datalist>
+                  <p className="text-[10px] text-gray-400 mt-1">Reference of confirmed order from Sales Orders page.</p>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Delivery Note Ref</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-700">Delivery Note Ref</label>
+                    <span className="text-[10px] text-gray-400 font-normal">(Optional)</span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. DN-2026-001"
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
+                    list="serialDnList"
+                    placeholder="Leave blank if not shipped (e.g. DN-2026-001)"
+                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-purple-500"
                     value={form.dnRef || ""}
                     onChange={e => setForm(f => ({ ...f, dnRef: e.target.value }))}
                   />
+                  <datalist id="serialDnList">
+                    {deliveryNotes.map(dn => (
+                      <option key={dn._id} value={dn.dnNo}>{dn.customer?.name ? `(${dn.customer.name})` : ''}</option>
+                    ))}
+                  </datalist>
+                  <p className="text-[10px] text-gray-400 mt-1">Dispatch challan reference from Delivery Notes page.</p>
                 </div>
 
                 <div className="col-span-2">
@@ -318,7 +379,7 @@ export default function SerialNumbersPage() {
                   <textarea
                     rows={2}
                     placeholder="Quality inspection notes, firmware version, commissioning details"
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
                     value={form.notes || ""}
                     onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   />

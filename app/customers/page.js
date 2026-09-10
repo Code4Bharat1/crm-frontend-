@@ -222,7 +222,7 @@ export default function CustomersPage() {
             Edit
           </button>
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" asChild>
-            <Link href={`/customers/${c.id || c._id}`}>360°</Link>
+            <Link href={`/customers/${c.id || c._id}`}>Profile</Link>
           </Button>
           <button
             onClick={() => handleDelete(c.id || c._id, c.name)}

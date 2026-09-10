@@ -244,7 +244,7 @@ export default function CustomerDetailPage() {
       )}
 
       <PageHeader
-        breadcrumb="CRM / Customers / 360°"
+        breadcrumb="CRM / Customers / Profile"
         title={customer.name}
         subtitle={`${customer.id} · ${customer.industry || customer.type || "—"}`}
         actions={

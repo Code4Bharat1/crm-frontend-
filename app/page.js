@@ -202,11 +202,6 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      {/* ─── LIVE ATTENDANCE: ADMIN WORKFORCE SUMMARY vs EMPLOYEE PERSONAL PUNCH & HISTORY ─── */}
-      <div className="mt-3 mb-1">
-        {isAdmin ? <AdminAttendanceSummary /> : <EmployeeAttendanceDashboard />}
-      </div>
-
       {/* ─── COMPACT LATEST NOTIFICATIONS FEED (MAX 4, UNREAD ONLY, NOT CARDS) ─── */}
       {displayedNotifs.length > 0 && (
         <div className="mt-4 rounded-xl border border-blue-200/80 bg-white/95 dark:bg-card/95 shadow-xs overflow-hidden">
@@ -450,6 +445,11 @@ export default function Dashboard() {
           tone={parseFloat(projectMarginPercent) > 0 ? "success" : "default"}
           icon={TrendingUp}
         />
+      </div>
+
+      {/* ─── LIVE ATTENDANCE: ADMIN WORKFORCE SUMMARY vs EMPLOYEE PERSONAL PUNCH & HISTORY ─── */}
+      <div className="mt-5">
+        {isAdmin ? <AdminAttendanceSummary /> : <EmployeeAttendanceDashboard />}
       </div>
 
       {/* ─── CHARTS FROM REAL DATABASE COLLECTIONS ─── */}

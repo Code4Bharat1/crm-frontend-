@@ -7,6 +7,7 @@ import { Section } from "@/components/crm-ui";
 import { toast } from "sonner";
 import { setAuthData } from "@/lib/authUtils";
 import { API_BASE_URL } from "@/lib/api";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
@@ -72,7 +73,15 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium block">Password</label>
+                <Link
+                  href={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : "/forgot-password"}
+                  className="text-xs font-semibold text-primary hover:underline hover:text-primary/90 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input 
                   name="password"
@@ -101,7 +110,8 @@ export default function LoginPage() {
             <Button type="button" onClick={handleLogin} className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>
-            <div className="text-center mt-4">
+
+            <div className="text-center mt-3">
                <p className="text-xs text-muted-foreground">Admin: admin@gmail.com | HR: hr@nexcore.com (pass: 123456)</p>
             </div>
           </form>

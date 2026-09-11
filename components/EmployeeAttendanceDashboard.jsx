@@ -72,10 +72,16 @@ export function EmployeeAttendanceDashboard() {
       }
 
       // Recent records
-      if (recentRes.status === "fulfilled" && recentRes.value?.data) {
-        setRecentRecords(recentRes.value.data || []);
-      } else if (recentRes.status === "fulfilled" && Array.isArray(recentRes.value)) {
-        setRecentRecords(recentRes.value || []);
+      if (recentRes.status === "fulfilled") {
+        const val = recentRes.value;
+        const recordsList = Array.isArray(val?.data?.records)
+          ? val.data.records
+          : Array.isArray(val?.data)
+          ? val.data
+          : Array.isArray(val)
+          ? val
+          : [];
+        setRecentRecords(recordsList);
       }
     } catch (err) {
       console.error("Failed to load employee attendance data:", err);
@@ -462,14 +468,14 @@ export function EmployeeAttendanceDashboard() {
                     </div>
                   </td>
                 </tr>
-              ) : recentRecords.length === 0 ? (
+              ) : !Array.isArray(recentRecords) || recentRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-6 text-center text-muted-foreground">
                     No past attendance logs found for your account.
                   </td>
                 </tr>
               ) : (
-                recentRecords.map((r) => {
+                (Array.isArray(recentRecords) ? recentRecords : []).map((r) => {
                   return (
                     <tr
                       key={r._id || r.id || r.date}

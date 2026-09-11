@@ -39,7 +39,8 @@ import {
   Percent,
   Building2,
   Check,
-  CheckCheck
+  CheckCheck,
+  KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -185,6 +186,11 @@ function SidebarNav({ onNavigate, user, permissions }) {
 function Brand() {
   return null;
 }
+
+const AUTH_STANDALONE_ROUTES = ['/login', '/reset-password', '/forgot-password'];
+const isAuthStandaloneRoute = (path) => path && AUTH_STANDALONE_ROUTES.some((route) => path === route || path.startsWith(`${route}/`));
+const isPublicRoute = (path) => path && (isAuthStandaloneRoute(path) || path === '/change-password' || path.startsWith('/change-password/'));
+
 function AppShell({ children }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -212,7 +218,7 @@ function AppShell({ children }) {
     }
 
     if (!u) {
-      if (pathname !== '/login') {
+      if (!isPublicRoute(pathname)) {
         router.replace('/login');
       }
       return;
@@ -302,7 +308,7 @@ function AppShell({ children }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  if (pathname === '/login') {
+  if (isAuthStandaloneRoute(pathname) || (!user && isPublicRoute(pathname))) {
     return <>{children}</>;
   }
 
@@ -543,6 +549,12 @@ function AppShell({ children }) {
                   <Link href="/audit-logs">My audit trail</Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/change-password" className="flex items-center cursor-pointer">
+                  <KeyRound className="mr-2 size-4 text-primary" /> Change password
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <button onClick={handleLogout} className="w-full text-left text-destructive flex items-center">

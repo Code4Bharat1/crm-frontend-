@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { LEAD_STAGES } from "@/lib/crm-data";
 
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api";
 const SAMPLE = "Customer needs 20 controllers by next month and wants quotation. Site is at Chakan MIDC, contact Sachin Patil 9822xxxxx. Budget around 4 lakh.";
 
 export default function AiPage() {
@@ -36,7 +37,7 @@ export default function AiPage() {
 
   // On page load, check if the latest email already has a lead in DB
   useEffect(() => {
-    fetch("http://localhost:5245/api/sales/leads")
+    fetch(`${API_BASE}/sales/leads`)
       .then(r => r.json())
       .then(leads => {
         if (Array.isArray(leads) && leads.some(l => l.source === "Email Inquiry" && l.sourceEmailId)) {
@@ -53,7 +54,7 @@ export default function AiPage() {
     setLoading(true);
     toast.info("Fetching and analysing latest email...");
     try {
-      const res = await fetch("http://localhost:5245/api/ai/extract-lead", { method: "POST" });
+      const res = await fetch(`${API_BASE}/ai/extract-lead`, { method: "POST" });
       const data = await res.json();
 
       if (!res.ok) {
@@ -154,7 +155,7 @@ export default function AiPage() {
         sourceEmailId: emailDetails?.uid || null,
       };
 
-      const res = await fetch("http://localhost:5245/api/sales/leads", {
+      const res = await fetch(`${API_BASE}/sales/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -169,7 +170,7 @@ export default function AiPage() {
           window.__existingLeadEmailIds = window.__existingLeadEmailIds || new Set();
           window.__existingLeadEmailIds.add(emailDetails.uid);
           // Mark email as read → removes it from inbox on the Email page
-          fetch(`http://localhost:5245/api/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
+          fetch(`${API_BASE}/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
         }
         window.location.href = '/leads';
       } else if (res.status === 409) {
@@ -180,7 +181,7 @@ export default function AiPage() {
         setLeadCreated(true);
         setExtracted(false);
         if (emailDetails?.uid) {
-          fetch(`http://localhost:5245/api/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
+          fetch(`${API_BASE}/ai/emails/${emailDetails.uid}/read`, { method: 'PUT' }).catch(() => {});
         }
         setTimeout(() => { window.location.href = '/leads'; }, 1200);
       } else {

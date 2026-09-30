@@ -248,24 +248,24 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-      {/* Search Bar (Top tabs removed) */}
-      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar p-2.5">
+      {/* Search Bar */}
+      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar p-3">
         <div className="relative flex items-center">
-          <Search className="absolute left-2.5 size-3.5 text-sidebar-foreground/40 pointer-events-none" />
+          <Search className="absolute left-3 size-4 text-sidebar-foreground/50 pointer-events-none" />
           <input
             type="text"
             placeholder="Filter menu items…"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full h-8.5 pl-8 pr-7 text-xs rounded-lg bg-white/10 border border-white/10 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/80 focus:bg-white/15 transition-all"
+            className="w-full h-10 pl-9.5 pr-8 text-sm rounded-xl bg-white/10 hover:bg-white/[0.14] border border-white/15 text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/50 focus:bg-white/15 transition-all shadow-xs"
           />
           {filterQuery && (
             <button
               type="button"
               onClick={() => setFilterQuery("")}
-              className="absolute right-2 text-sidebar-foreground/60 hover:text-sidebar-foreground p-0.5 cursor-pointer"
+              className="absolute right-2.5 text-sidebar-foreground/60 hover:text-sidebar-foreground p-1 rounded-md hover:bg-white/10 cursor-pointer"
             >
-              <X className="size-3" />
+              <X className="size-4" />
             </button>
           )}
         </div>
@@ -322,15 +322,9 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
                     >
                       {g.group}
                     </span>
-                    {hasActiveItem && (
-                      <span className="size-1.5 rounded-full bg-accent shrink-0 shadow-xs shadow-accent/50" />
-                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/10 text-sidebar-foreground/60">
-                      {g.items.length}
-                    </span>
                     <ChevronDown
                       className={cn(
                         "size-3.5 text-sidebar-foreground/50 transition-transform duration-200",
@@ -364,9 +358,6 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
                               )}
                             />
                             <span className="truncate flex-1">{it.label}</span>
-                            {active && (
-                              <span className="size-1.5 rounded-full bg-accent-foreground shrink-0 shadow-xs" />
-                            )}
                           </Link>
                         </li>
                       );

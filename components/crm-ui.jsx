@@ -234,7 +234,7 @@ function Kpi({
 
       {/* Subtext / Trend */}
       {sub ? (
-        <div className="mt-2 pt-1.5 border-t border-black/10 dark:border-white/10 flex items-center gap-1 min-w-0">
+        <div className="mt-1.5 flex items-center gap-1 min-w-0">
           {isPositiveTrend ? (
             <span className="inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-black text-emerald-800 dark:text-emerald-300 shrink-0">
               <TrendingUp className="size-3" />

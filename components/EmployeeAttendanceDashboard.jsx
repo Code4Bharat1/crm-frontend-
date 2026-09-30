@@ -446,7 +446,69 @@ export function EmployeeAttendanceDashboard() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Cards View (< 768px) */}
+        <div className="block md:hidden divide-y divide-gray-100 dark:divide-border/40">
+          {loadingStats ? (
+            <div className="py-6 text-center text-muted-foreground">
+              <div className="flex items-center justify-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                <span>Loading attendance records...</span>
+              </div>
+            </div>
+          ) : !Array.isArray(recentRecords) || recentRecords.length === 0 ? (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              No past attendance logs found for your account.
+            </div>
+          ) : (
+            (Array.isArray(recentRecords) ? recentRecords : []).map((r) => {
+              return (
+                <div key={r._id || r.id || r.date} className="p-3.5 space-y-2 hover:bg-blue-50/20 dark:hover:bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground">{r.date}</span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.status === "Present"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200"
+                          : r.status === "Half Day"
+                          ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200"
+                          : r.status === "Leave"
+                          ? "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200"
+                          : r.status === "Week Off"
+                          ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200"
+                          : "bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300 border border-gray-200"
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 bg-gray-50/60 dark:bg-muted/20 p-2 rounded-lg text-[11px]">
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">In</span>
+                      <span className="font-mono font-medium text-foreground">{fmtTime(r.checkIn)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">Out</span>
+                      <span className="font-mono font-medium text-foreground">{fmtTime(r.checkOut)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">Worked</span>
+                      <span className="font-bold text-emerald-600">
+                        {r.workedMinutes > 0 ? fmtDuration(r.workedMinutes) : "-"}
+                      </span>
+                    </div>
+                  </div>
+                  {r.remarks && (
+                    <p className="text-[10px] text-muted-foreground italic truncate">Note: {r.remarks}</p>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop History Table (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-muted/20 text-muted-foreground font-semibold border-b border-gray-200/60 dark:border-border/40 text-[10px] uppercase">

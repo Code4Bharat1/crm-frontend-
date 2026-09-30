@@ -52,6 +52,7 @@ export default function WarrantyPage() {
 
   // Serial Quick Check Tool
   const [checkSerialInput, setCheckSerialInput] = useState("");
+  const [checkedSerial, setCheckedSerial] = useState("");
   const [checkResult, setCheckResult] = useState(null);
   const [checking, setChecking] = useState(false);
 
@@ -127,13 +128,23 @@ export default function WarrantyPage() {
     loadData();
   };
 
+  const handleCheckInputChange = (e) => {
+    setCheckSerialInput(e.target.value);
+    // Clear previous check result as soon as user modifies input
+    if (checkResult) {
+      setCheckResult(null);
+    }
+  };
+
   const handleQuickCheck = async (e) => {
     e.preventDefault();
-    if (!checkSerialInput.trim()) return;
+    const query = checkSerialInput.trim();
+    if (!query) return;
 
     setChecking(true);
     try {
-      const res = await checkSerialWarranty(checkSerialInput.trim());
+      const res = await checkSerialWarranty(query);
+      setCheckedSerial(query);
       setCheckResult(res);
     } catch (err) {
       showToast(err.message, "error");
@@ -405,7 +416,7 @@ export default function WarrantyPage() {
         </div>
 
         {/* Global KPIs */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <Kpi
             label="Units Under Warranty"
             value={kpis?.active || 0}
@@ -453,13 +464,13 @@ export default function WarrantyPage() {
                 type="text"
                 placeholder="Enter Serial Number (e.g. SN-2026-0001)..."
                 value={checkSerialInput}
-                onChange={(e) => setCheckSerialInput(e.target.value)}
-                className="text-xs font-mono px-3.5 py-2 rounded-xl border border-blue-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                onChange={handleCheckInputChange}
+                className="text-xs font-mono px-3.5 py-2 rounded-xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 hover:border-gray-400 transition-colors"
               />
               <button
                 type="submit"
                 disabled={checking}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition-colors disabled:opacity-60 shrink-0"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition-colors disabled:opacity-60 shrink-0 cursor-pointer"
               >
                 {checking ? "Checking..." : "Verify"}
               </button>
@@ -473,7 +484,7 @@ export default function WarrantyPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono font-bold text-blue-700">{checkSerialInput}</span>
+                      <span className="font-mono font-bold text-blue-700">{checkedSerial || checkResult.warranty?.serialNo || checkResult.serialInfo?.serialNo}</span>
                       <span
                         className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
                           checkResult.underWarranty
@@ -509,7 +520,7 @@ export default function WarrantyPage() {
                 </div>
               ) : (
                 <p className="text-xs text-red-600 font-semibold flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4" /> No record found for serial number &quot;{checkSerialInput}&quot;. Please verify the serial tag.
+                  <AlertTriangle className="w-4 h-4" /> No record found for serial number &quot;{checkedSerial}&quot;. Please verify the serial tag.
                 </p>
               )}
             </div>

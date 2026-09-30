@@ -125,22 +125,22 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
       {/* Header Bar */}
-      <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white px-5 py-4 border-b border-gray-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
-            <CalendarDays className="w-5 h-5" />
+      <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-white p-3.5 sm:p-5 border-b border-gray-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="size-9 sm:size-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0 mt-0.5 sm:mt-0">
+            <CalendarDays className="size-4.5 sm:size-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <h3 className="text-sm font-bold text-gray-900 tracking-tight">
                 Weekend Work Policy (Saturday & Sunday)
               </h3>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100/80 text-blue-800 border border-blue-200">
-                <ShieldCheck className="w-3 h-3 text-blue-600" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-blue-100/80 text-blue-800 border border-blue-200">
+                <ShieldCheck className="size-3 text-blue-600" />
                 Admin, HR & Manager Only
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
               Set Saturday and Sunday operational status. Toggling <span className="font-semibold text-gray-700">OFF</span> marks the day as a Weekly Holiday (Week Off); toggling <span className="font-semibold text-emerald-700">ON</span> designates it as a Working Day.
             </p>
           </div>
@@ -164,42 +164,42 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
       </div>
 
       {/* Control Tiles (Saturday & Sunday) */}
-      <div className="p-5 grid gap-4 md:grid-cols-2">
+      <div className="p-3.5 sm:p-5 grid gap-3 sm:gap-4 md:grid-cols-2">
         {/* ─── SATURDAY POLICY TILE ─── */}
-        <div className={`rounded-xl p-4 border transition-all duration-200 flex flex-col justify-between ${
+        <div className={`rounded-xl p-3.5 sm:p-4 border transition-all duration-200 flex flex-col justify-between ${
           saturdayOff 
             ? "bg-slate-50/80 border-gray-200/90" 
             : "bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 border-emerald-200 shadow-sm"
         }`}>
           <div>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className={`size-8 sm:size-9 rounded-lg flex items-center justify-center shrink-0 ${
                   saturdayOff ? "bg-gray-200/80 text-gray-600" : "bg-emerald-600 text-white shadow-sm"
                 }`}>
-                  {saturdayOff ? <Coffee className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
+                  {saturdayOff ? <Coffee className="size-4" /> : <Briefcase className="size-4" />}
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-gray-900">Saturday</h4>
-                  <p className="text-[11px] text-gray-500">Weekly operational schedule</p>
+                  <p className="text-[11px] text-gray-500">Weekly schedule</p>
                 </div>
               </div>
 
               {/* Status Badge */}
               {saturdayOff ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                  <Moon className="w-3 h-3 text-gray-500" />
-                  OFF (Weekend Off)
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                  <Moon className="size-3 text-gray-500" />
+                  OFF (Week Off)
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                  ON (Working Day)
+                  ON (Working)
                 </span>
               )}
             </div>
 
-            <p className="text-xs text-gray-600 mt-3 leading-relaxed">
+            <p className="text-xs text-gray-600 mt-2.5 leading-relaxed">
               {saturdayOff
                 ? "Saturday is configured as a Weekly Holiday (Week Off). Standard workforce shifts and biometric check-ins are not required."
                 : "Saturday is configured as an Active Working Day. Employees must clock in for their regular shifts, and punch records are logged."}
@@ -207,7 +207,7 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
           </div>
 
           {/* Controls: Segmented Buttons */}
-          <div className="mt-4 pt-3 border-t border-gray-200/80 flex items-center justify-between gap-3">
+          <div className="mt-3.5 pt-3 border-t border-gray-200/80 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-gray-500">
               Schedule Mode:
             </span>
@@ -218,14 +218,14 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
                 type="button"
                 onClick={() => handleToggleSaturday(true)}
                 disabled={loading || savingDay === "saturday"}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs cursor-pointer ${
                   saturdayOff
                     ? "bg-white text-gray-800 shadow-sm border border-gray-200/80"
                     : "text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {savingDay === "saturday" && saturdayOff && (
-                  <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+                  <Loader2 className="size-3 animate-spin text-gray-500" />
                 )}
                 OFF (Holiday)
               </button>
@@ -233,16 +233,16 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
                 type="button"
                 onClick={() => handleToggleSaturday(false)}
                 disabled={loading || savingDay === "saturday"}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs cursor-pointer ${
                   !saturdayOff
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {savingDay === "saturday" && !saturdayOff ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                  <Loader2 className="size-3 animate-spin text-white" />
                 ) : (
-                  <Sparkles className="w-3 h-3 text-emerald-200" />
+                  <Sparkles className="size-3 text-emerald-200" />
                 )}
                 ON (Working)
               </button>
@@ -251,48 +251,48 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
         </div>
 
         {/* ─── SUNDAY POLICY TILE ─── */}
-        <div className={`rounded-xl p-4 border transition-all duration-200 flex flex-col justify-between ${
+        <div className={`rounded-xl p-3.5 sm:p-4 border transition-all duration-200 flex flex-col justify-between ${
           sundayOff 
             ? "bg-slate-50/80 border-gray-200/90" 
             : "bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 border-emerald-200 shadow-sm"
         }`}>
           <div>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className={`size-8 sm:size-9 rounded-lg flex items-center justify-center shrink-0 ${
                   sundayOff ? "bg-gray-200/80 text-gray-600" : "bg-emerald-600 text-white shadow-sm"
                 }`}>
-                  {sundayOff ? <Coffee className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
+                  {sundayOff ? <Coffee className="size-4" /> : <Briefcase className="size-4" />}
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-gray-900">Sunday</h4>
-                  <p className="text-[11px] text-gray-500">Weekly operational schedule</p>
+                  <p className="text-[11px] text-gray-500">Weekly schedule</p>
                 </div>
               </div>
 
               {/* Status Badge */}
               {sundayOff ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                  <Moon className="w-3 h-3 text-gray-500" />
-                  OFF (Weekend Off)
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                  <Moon className="size-3 text-gray-500" />
+                  OFF (Week Off)
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                  ON (Working Day)
+                  ON (Working)
                 </span>
               )}
             </div>
 
-            <p className="text-xs text-gray-600 mt-3 leading-relaxed">
+            <p className="text-xs text-gray-600 mt-2.5 leading-relaxed">
               {sundayOff
-                ? "Sunday is configured as a Weekly Holiday (Week Off). Standard workforce rest day with no scheduled attendance."
-                : "Sunday is configured as an Active Working Day. Special shift operations are active and workforce punch-in is recorded."}
+                ? "Sunday is configured as a Weekly Holiday (Week Off). Standard workforce shifts and biometric check-ins are not required."
+                : "Sunday is configured as an Active Working Day. Employees must clock in for their regular shifts, and punch records are logged."}
             </p>
           </div>
 
           {/* Controls: Segmented Buttons */}
-          <div className="mt-4 pt-3 border-t border-gray-200/80 flex items-center justify-between gap-3">
+          <div className="mt-3.5 pt-3 border-t border-gray-200/80 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-gray-500">
               Schedule Mode:
             </span>
@@ -303,14 +303,14 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
                 type="button"
                 onClick={() => handleToggleSunday(true)}
                 disabled={loading || savingDay === "sunday"}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs cursor-pointer ${
                   sundayOff
                     ? "bg-white text-gray-800 shadow-sm border border-gray-200/80"
                     : "text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {savingDay === "sunday" && sundayOff && (
-                  <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+                  <Loader2 className="size-3 animate-spin text-gray-500" />
                 )}
                 OFF (Holiday)
               </button>
@@ -318,16 +318,16 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
                 type="button"
                 onClick={() => handleToggleSunday(false)}
                 disabled={loading || savingDay === "sunday"}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs cursor-pointer ${
                   !sundayOff
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-gray-500 hover:text-gray-900"
                 }`}
               >
                 {savingDay === "sunday" && !sundayOff ? (
-                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                  <Loader2 className="size-3 animate-spin text-white" />
                 ) : (
-                  <Sparkles className="w-3 h-3 text-emerald-200" />
+                  <Sparkles className="size-3 text-emerald-200" />
                 )}
                 ON (Working)
               </button>
@@ -337,10 +337,10 @@ export function WeekendPolicyCard({ currentUser, onPolicyChange }) {
       </div>
 
       {/* Footer Info */}
-      <div className="px-5 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex items-center justify-between text-[11px] text-gray-500">
+      <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500">
         <div className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-blue-500" />
-          <span>Policies update across biometric ledgers and ESS records automatically.</span>
+          <span>Policies update across biometric ledgers automatically.</span>
         </div>
         <div className="flex items-center gap-1 text-emerald-600 font-medium">
           <CheckCircle2 className="w-3.5 h-3.5" />

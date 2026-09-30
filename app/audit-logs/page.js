@@ -174,12 +174,12 @@ export default function Page() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Kpi label="Total Logs" value={stats.entries || logs.length} sub="All system events" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
+        <Kpi label="Total Logs" value={stats.entries || logs.length} sub="All system events" tone="default" />
         <Kpi label="User Logins" value={loginCount} tone="success" sub="Successful sessions" />
         <Kpi label="Failed Logins" value={failedLoginCount} tone="danger" sub="Rejected attempts" />
         <Kpi label="Warnings &amp; Critical" value={(stats.warnings || 0) + (stats.critical || 0)} tone="warning" sub="Security notices" />
-        <Kpi label="Timezone" value="IST" sub="Asia/Kolkata (+5:30)" tone="accent" />
+        <Kpi label="Timezone" value="IST" sub="Asia/Kolkata (+5:30)" tone="accent" className="col-span-2 sm:col-span-1" />
       </div>
 
       {/* Filter Tabs */}

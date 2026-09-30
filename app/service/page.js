@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   getServiceRequests,
@@ -479,25 +479,26 @@ export default function ServiceRequestsPage() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <PageHeader
-            breadcrumb="Projects & Service / Service Requests"
-            title="Field Service & Breakdown Tickets"
-            subtitle="Customer breakdown calls, planned preventive maintenance, technician scheduling, and automated serial warranty verification."
-          />
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95 shrink-0 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" /> Log Service Request
-          </button>
-        </div>
+        <PageHeader
+          breadcrumb="Projects & Service / Service Requests"
+          title="Field Service & Breakdown Tickets"
+          subtitle="Customer breakdown calls, planned preventive maintenance, technician scheduling, and automated serial warranty verification."
+          actions={
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              size="sm"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs h-8.5 px-2.5 sm:px-3 cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+              <span>Log Service Request</span>
+            </Button>
+          }
+        />
 
         {/* KPIs */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <Kpi
             label="Service Requests"
             value={kpis?.total || 0}
@@ -528,18 +529,18 @@ export default function ServiceRequestsPage() {
         </div>
 
         {/* Toolbar & Filters */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-xs">
+          {/* Status Tabs: Touch scrollable on mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
             {["All", "New", "Assigned", "In Progress", "Resolved", "Closed"].map((st) => (
               <button
                 key={st}
                 type="button"
                 onClick={() => setStatusFilter(st)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   statusFilter === st
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-gray-600 hover:text-gray-900 bg-gray-100/80 hover:bg-gray-200/70"
                 }`}
               >
                 {st}
@@ -548,20 +549,20 @@ export default function ServiceRequestsPage() {
           </div>
 
           {/* Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full md:w-auto">
             <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search ticket, client, serial..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
             </div>
             <button
               type="submit"
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer shrink-0"
             >
               Search
             </button>
@@ -572,7 +573,7 @@ export default function ServiceRequestsPage() {
                   setSearch("");
                   loadData();
                 }}
-                className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600"
+                className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-600 cursor-pointer shrink-0"
               >
                 Clear
               </button>
@@ -580,8 +581,8 @@ export default function ServiceRequestsPage() {
           </form>
         </div>
 
-        {/* Service Requests Table */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        {/* Service Requests: Mobile Cards View (< md) + Desktop Table View (>= md) */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-xs overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-gray-500 flex flex-col items-center gap-3">
               <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full" />
@@ -594,134 +595,251 @@ export default function ServiceRequestsPage() {
               <p className="text-xs text-gray-400 mt-1">Create a new ticket or adjust search filter.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-4">Ticket</th>
-                    <th className="py-3 px-4">Customer & Project</th>
-                    <th className="py-3 px-4">Equipment & Serial</th>
-                    <th className="py-3 px-4">Issue Description</th>
-                    <th className="py-3 px-4">Warranty</th>
-                    <th className="py-3 px-4">Technician</th>
-                    <th className="py-3 px-4 text-right">Charges</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {requests.map((r) => {
-                    const isClosed = ["Resolved", "Closed"].includes(r.status);
-                    return (
-                      <tr key={r._id || r.requestId} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-blue-600">
-                          {r.requestId}
-                          <span className="block font-sans text-[11px] text-gray-400 font-normal">
-                            {r.type}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-medium text-gray-800">
-                          <div>{r.customer?.name}</div>
-                          {r.project?.name && (
-                            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded mt-0.5">
-                              <Briefcase className="w-2.5 h-2.5 text-blue-600" /> {r.project.name}
-                            </div>
-                          )}
-                          {r.customer?.phone && (
-                            <div className="text-[11px] text-gray-400">{r.customer.phone}</div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-gray-900">{r.productName}</div>
-                          <div className="font-mono text-[11px] text-gray-500 flex items-center gap-1">
-                            <Hash className="w-3 h-3 text-gray-400" />
-                            {r.serialNo ? r.serialNo : "No Serial"}
+            <>
+              {/* ─── MOBILE CARD VIEW (Phones < 768px) ─── */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {requests.map((r) => {
+                  const isClosed = ["Resolved", "Closed"].includes(r.status);
+                  return (
+                    <div key={r._id || r.requestId} className="p-3.5 space-y-2.5 hover:bg-gray-50/50 transition-colors">
+                      {/* Header: Ticket ID, Type, Warranty Pill, & Status Badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-sm text-blue-600">{r.requestId}</span>
+                            <span className="text-[10px] uppercase font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {r.type}
+                            </span>
                           </div>
-                        </td>
-                        <td className="py-3.5 px-4 max-w-xs">
-                          <div className="font-semibold text-gray-800">{r.issue}</div>
-                          {r.description && (
-                            <div className="text-[11px] text-gray-400 truncate">{r.description}</div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
                           {r.underWarranty ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                              <ShieldCheck className="w-3.5 h-3.5" /> In Warranty
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded mt-1">
+                              <ShieldCheck className="size-3" /> In Warranty
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded mt-1">
                               Out of Warranty
                             </span>
                           )}
-                        </td>
-                        <td className="py-3.5 px-4 text-gray-700">
-                          <div className="flex items-center gap-1.5">
-                            <select
-                              value={r.engineer?.name || ""}
-                              onChange={async (e) => {
-                                const techName = e.target.value;
-                                if (!techName) return;
-                                const emp = employees.find((em) => em.fullName === techName);
-                                try {
-                                  await updateServiceRequest(r._id || r.requestId, {
-                                    engineer: {
-                                      name: techName,
-                                      id: emp?.employeeCode || emp?._id || "",
-                                      phone: emp?.phone || ""
-                                    },
-                                    status: r.status === "New" ? "Assigned" : r.status
-                                  });
-                                  showToast(`Assigned ${techName} to ${r.requestId} & dispatched notification!`);
-                                  loadData();
-                                } catch (err) {
-                                  showToast("Failed to assign technician", "error");
-                                }
-                              }}
-                              className="text-xs font-semibold bg-blue-50/70 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[175px] truncate"
-                            >
-                              <option value="">{r.engineer?.name || "-- Assign Tech --"}</option>
-                              {sortedEmployees.map((emp) => (
-                                <option key={emp.employeeCode || emp._id} value={emp.fullName}>
-                                  {emp.fullName} ({emp.role || "Staff"})
-                                </option>
-                              ))}
-                            </select>
+                        </div>
+                        <StatusBadge value={r.status} />
+                      </div>
+
+                      {/* Customer & Project */}
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-xs sm:text-sm text-gray-900">{r.customer?.name}</div>
+                        {r.project?.name && (
+                          <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded">
+                            <Briefcase className="size-2.5 text-blue-600" /> {r.project.name}
                           </div>
-                          {r.scheduledOn && (
-                            <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5 text-gray-400" />
-                              {fmtDate(r.scheduledOn)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-gray-900">
-                          {fmtINR(r.serviceCharges)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <StatusBadge value={r.status} />
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
+                        )}
+                        {r.customer?.phone && (
+                          <div className="text-[11px] text-gray-500">{r.customer.phone}</div>
+                        )}
+                      </div>
+
+                      {/* Equipment & Issue */}
+                      <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-200/70 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900 truncate">{r.productName}</span>
+                          <span className="font-mono text-[10px] text-gray-500 shrink-0 ml-1">
+                            {r.serialNo ? `#${r.serialNo}` : "No Serial"}
+                          </span>
+                        </div>
+                        <div className="text-gray-700 font-medium">{r.issue}</div>
+                        {r.description && (
+                          <div className="text-[11px] text-gray-500 line-clamp-2">{r.description}</div>
+                        )}
+                      </div>
+
+                      {/* Footer: Technician select, Charges & Action Button */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
+                        {/* Tech Assign */}
+                        <div className="min-w-0 flex-1">
+                          <select
+                            value={r.engineer?.name || ""}
+                            onChange={async (e) => {
+                              const techName = e.target.value;
+                              if (!techName) return;
+                              const emp = employees.find((em) => em.fullName === techName);
+                              try {
+                                await updateServiceRequest(r._id || r.requestId, {
+                                  engineer: {
+                                    name: techName,
+                                    id: emp?.employeeCode || emp?._id || "",
+                                    phone: emp?.phone || ""
+                                  },
+                                  status: r.status === "New" ? "Assigned" : r.status
+                                });
+                                showToast(`Assigned ${techName} to ${r.requestId}!`);
+                                loadData();
+                              } catch (err) {
+                                showToast("Failed to assign technician", "error");
+                              }
+                            }}
+                            className="w-full text-xs font-semibold bg-blue-50/80 border border-blue-200 text-blue-900 rounded-lg px-2 py-1 outline-none truncate cursor-pointer"
+                          >
+                            <option value="">{r.engineer?.name || "-- Assign Tech --"}</option>
+                            {sortedEmployees.map((emp) => (
+                              <option key={emp.employeeCode || emp._id} value={emp.fullName}>
+                                {emp.fullName} ({emp.role || "Staff"})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Charges & Action */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-bold text-xs text-gray-900">{fmtINR(r.serviceCharges)}</span>
                           {!isClosed ? (
                             <button
                               type="button"
                               onClick={() => openResolveModal(r)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer"
                             >
                               Resolve
                             </button>
                           ) : (
-                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center justify-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                              <CheckCircle2 className="size-3.5" /> Done
                             </span>
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ─── DESKTOP TABLE VIEW (Tablets & Desktops >= 768px) ─── */}
+              <div className="hidden md:block overflow-x-auto no-scrollbar">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
+                      <th className="py-3 px-4">Ticket</th>
+                      <th className="py-3 px-4">Customer & Project</th>
+                      <th className="py-3 px-4">Equipment & Serial</th>
+                      <th className="py-3 px-4">Issue Description</th>
+                      <th className="py-3 px-4">Warranty</th>
+                      <th className="py-3 px-4">Technician</th>
+                      <th className="py-3 px-4 text-right">Charges</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {requests.map((r) => {
+                      const isClosed = ["Resolved", "Closed"].includes(r.status);
+                      return (
+                        <tr key={r._id || r.requestId} className="hover:bg-gray-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-blue-600">
+                            {r.requestId}
+                            <span className="block font-sans text-[11px] text-gray-400 font-normal">
+                              {r.type}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-gray-800">
+                            <div>{r.customer?.name}</div>
+                            {r.project?.name && (
+                              <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded mt-0.5">
+                                <Briefcase className="w-2.5 h-2.5 text-blue-600" /> {r.project.name}
+                              </div>
+                            )}
+                            {r.customer?.phone && (
+                              <div className="text-[11px] text-gray-400">{r.customer.phone}</div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold text-gray-900">{r.productName}</div>
+                            <div className="font-mono text-[11px] text-gray-500 flex items-center gap-1">
+                              <Hash className="w-3 h-3 text-gray-400" />
+                              {r.serialNo ? r.serialNo : "No Serial"}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 max-w-xs">
+                            <div className="font-semibold text-gray-800">{r.issue}</div>
+                            {r.description && (
+                              <div className="text-[11px] text-gray-400 truncate">{r.description}</div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {r.underWarranty ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <ShieldCheck className="w-3.5 h-3.5" /> In Warranty
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                                Out of Warranty
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-700">
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={r.engineer?.name || ""}
+                                onChange={async (e) => {
+                                  const techName = e.target.value;
+                                  if (!techName) return;
+                                  const emp = employees.find((em) => em.fullName === techName);
+                                  try {
+                                    await updateServiceRequest(r._id || r.requestId, {
+                                      engineer: {
+                                        name: techName,
+                                        id: emp?.employeeCode || emp?._id || "",
+                                        phone: emp?.phone || ""
+                                      },
+                                      status: r.status === "New" ? "Assigned" : r.status
+                                    });
+                                    showToast(`Assigned ${techName} to ${r.requestId} & dispatched notification!`);
+                                    loadData();
+                                  } catch (err) {
+                                    showToast("Failed to assign technician", "error");
+                                  }
+                                }}
+                                className="text-xs font-semibold bg-blue-50/70 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[175px] truncate"
+                              >
+                                <option value="">{r.engineer?.name || "-- Assign Tech --"}</option>
+                                {sortedEmployees.map((emp) => (
+                                  <option key={emp.employeeCode || emp._id} value={emp.fullName}>
+                                    {emp.fullName} ({emp.role || "Staff"})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            {r.scheduledOn && (
+                              <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                <Calendar className="w-2.5 h-2.5 text-gray-400" />
+                                {fmtDate(r.scheduledOn)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-bold text-gray-900">
+                            {fmtINR(r.serviceCharges)}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <StatusBadge value={r.status} />
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            {!isClosed ? (
+                              <button
+                                type="button"
+                                onClick={() => openResolveModal(r)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                              >
+                                Resolve
+                              </button>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-emerald-600 flex items-center justify-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

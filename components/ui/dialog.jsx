@@ -30,7 +30,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
     ...props
   },
   children,
-  /* @__PURE__ */ React.createElement(DialogPrimitive.Close, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground" }, /* @__PURE__ */ React.createElement(X, { className: "h-4 w-4" }), /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Close"))
+  /* @__PURE__ */ React.createElement(DialogPrimitive.Close, { className: "absolute right-3.5 top-3.5 z-50 flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-muted/60 text-muted-foreground transition-all duration-150 hover:bg-muted hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:pointer-events-none data-[state=open]:bg-accent" }, /* @__PURE__ */ React.createElement(X, { className: "h-4 w-4 stroke-[2.25]" }), /* @__PURE__ */ React.createElement("span", { className: "sr-only" }, "Close"))
 )));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({ className, ...props }) => /* @__PURE__ */ React.createElement("div", { className: cn("flex flex-col space-y-1.5 text-center sm:text-left", className), ...props });

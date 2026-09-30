@@ -180,16 +180,18 @@ export default function Page() {
         title="Bank Reconciliation"
         subtitle="Incoming credits are matched to open invoices by name and amount, with a confidence score. Nothing is auto-finalised — every match needs a human to reconcile it."
         actions={
-          <>
-            <Button variant="outline" onClick={() => setShowAddModal(true)}>+ Add Transaction</Button>
-            <Button onClick={handleSync} disabled={syncing} className="bg-accent font-bold text-accent-foreground hover:bg-accent/90">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)} className="text-xs h-8.5 px-2.5 sm:px-3 bg-card shadow-xs cursor-pointer">
+              + Add Transaction
+            </Button>
+            <Button size="sm" onClick={handleSync} disabled={syncing} className="bg-accent font-bold text-accent-foreground hover:bg-accent/90 text-xs h-8.5 px-2.5 sm:px-3 cursor-pointer">
               {syncing ? "Syncing…" : "Sync from HDFC"}
             </Button>
-          </>
+          </div>
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <Kpi label="Credits fetched" value={transactions.length} />
         <Kpi label="Suggested matches" value={transactions.filter((t) => t.status === "Suggested").length} tone="success" />
         <Kpi label="Needs review" value={transactions.filter((t) => t.status === "Needs Review").length} tone="warning" />

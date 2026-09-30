@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { getProjects, createProject, fmtINR, fmtDate } from "@/services/projectService";
 import { getCustomers, getSalesOrders, getQuotations } from "@/services/documentService";
 import { getEmployees } from "@/services/employeeService";
 import { PageHeader, Kpi, StatusBadge } from "@/components/crm-ui";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   FolderKanban,
   Plus,
   Search,
-  Filter,
   Users,
   Calendar,
   IndianRupee,
@@ -19,10 +20,27 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle2,
-  Clock,
   Briefcase,
-  Sparkles
+  Download,
 } from "lucide-react";
+
+// Clean project name helper to avoid clutter strings
+const cleanProjectName = (str) => {
+  if (!str) return "";
+  let clean = str;
+  // Strip "Quote for: " or "Quotation for: "
+  clean = clean.replace(/^(Quote|Quotation|Order|PO|Sales Order)\s+(for|ref|no|#)?:\s*/i, "");
+  // If formatted like "Customer Name - Actual Project", strip customer name prefix
+  const dashIdx = clean.indexOf(" - ");
+  if (dashIdx !== -1 && dashIdx < 35) {
+    clean = clean.substring(dashIdx + 3);
+  }
+  clean = clean.replace(/^(Quote|Quotation|Order|PO|Sales Order)\s+(for|ref|no|#)?:\s*/i, "");
+  clean = clean.replace(/^Quote\s*[-:]\s*/i, "");
+  return clean.trim();
+};
+
+
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -31,11 +49,12 @@ export default function ProjectsPage() {
   const [employees, setEmployees] = useState([]);
   const [salesOrders, setSalesOrders] = useState([]);
   const [quotations, setQuotations] = useState([]);
-  const [selectedSource, setSelectedSource] = useState("");
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
   const [search, setSearch] = useState("");
+  const [mobileSearch, setMobileSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [isCustomProject, setIsCustomProject] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -53,16 +72,89 @@ export default function ProjectsPage() {
     estimatedCost: "",
     start: new Date().toISOString().split("T")[0],
     end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-    progress: ""
+    progress: "",
   });
 
   const isProjectManager = (emp) => {
-    if (!emp?.role) return false;
-    const r = emp.role.trim().toLowerCase().replace(/[-_]/g, " ");
-    return r.includes("project manager") || r === "pm";
+    if (!emp) return false;
+    const role = (emp.role || "").trim().toLowerCase().replace(/[-_]/g, " ");
+    const dept = (emp.department || "").trim().toLowerCase().replace(/[-_]/g, " ");
+    const combined = `${role} ${dept}`;
+    return (
+      combined.includes("project manager") ||
+      combined.includes("project lead") ||
+      combined.includes("project head") ||
+      combined.includes("pm") ||
+      combined.includes("project") ||
+      combined.includes("manager")
+    );
   };
 
-  const projectManagers = employees.filter(isProjectManager);
+  // Only project managers list
+  const projectManagers = useMemo(() => {
+    const pms = employees.filter(isProjectManager);
+    return pms.length > 0 ? pms : employees;
+  }, [employees]);
+
+  // Options derived from quotations and sales orders
+  const customerProjectOptions = useMemo(() => {
+    const list = [];
+    const custId = form.customerId;
+    const custName = form.customerName?.toLowerCase();
+
+    // 1. Matched Sales Orders
+    salesOrders.forEach((so) => {
+      const isMatch = !custId || so.customer?.id === custId || so.customer?.name?.toLowerCase() === custName;
+      if (isMatch) {
+        const rawTitle = so.items?.[0]?.description || so.items?.[0]?.productCode || `Order ${so.soNo}`;
+        const cleanTitle = cleanProjectName(rawTitle);
+        const rev = so.grandTotal || so.subtotal || 0;
+        const scope = so.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+        list.push({
+          name: cleanTitle,
+          ref: so.soNo,
+          type: "Sales Order",
+          revenue: rev > 0 ? rev : "",
+          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
+          description: scope
+            ? `Scope under Sales Order ${so.soNo}: ${scope}. Turnkey delivery, installation & testing.`
+            : `Engineering project under ${so.soNo}.`,
+          customer: so.customer,
+        });
+      }
+    });
+
+    // 2. Matched Quotations
+    quotations.forEach((qt) => {
+      const isMatch = !custId || qt.customer?.id === custId || qt.customer?.name?.toLowerCase() === custName;
+      if (isMatch) {
+        const rawTitle = qt.subject || qt.items?.[0]?.description || `Quotation ${qt.quotationNo}`;
+        const cleanTitle = cleanProjectName(rawTitle);
+        const rev = qt.grandTotal || qt.subtotal || 0;
+        const scope = qt.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+        list.push({
+          name: cleanTitle,
+          ref: qt.quotationNo,
+          type: "Quotation",
+          revenue: rev > 0 ? rev : "",
+          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
+          description: scope
+            ? `Scope under Quotation ${qt.quotationNo}: ${scope}. Engineering integration & commissioning.`
+            : `Scope of work for ${cleanTitle}.`,
+          customer: qt.customer,
+        });
+      }
+    });
+
+    // Remove duplicates based on name
+    const uniqueMap = new Map();
+    list.forEach((item) => {
+      if (item.name && !uniqueMap.has(item.name)) {
+        uniqueMap.set(item.name, item);
+      }
+    });
+    return Array.from(uniqueMap.values());
+  }, [form.customerId, form.customerName, salesOrders, quotations]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -77,7 +169,7 @@ export default function ProjectsPage() {
         getCustomers().catch(() => ({ customers: [] })),
         getEmployees({ limit: 100 }).catch(() => ({ data: { employees: [] } })),
         getSalesOrders().catch(() => []),
-        getQuotations().catch(() => [])
+        getQuotations().catch(() => []),
       ]);
       setProjects(projRes.projects || []);
       setKpis(projRes.kpis || null);
@@ -87,18 +179,18 @@ export default function ProjectsPage() {
       const rawEmps = empRes?.data?.employees || empRes?.employees || (Array.isArray(empRes) ? empRes : []);
       setEmployees(rawEmps);
 
-      const rawOrders = Array.isArray(soRes) ? soRes : (soRes?.value || soRes?.orders || []);
+      const rawOrders = Array.isArray(soRes) ? soRes : soRes?.value || soRes?.orders || [];
       setSalesOrders(rawOrders);
 
-      const rawQuotes = Array.isArray(qtRes) ? qtRes : (qtRes?.value || qtRes?.quotations || []);
+      const rawQuotes = Array.isArray(qtRes) ? qtRes : qtRes?.value || qtRes?.quotations || [];
       setQuotations(rawQuotes);
 
-      // Auto-populate manager only if employee has Project Manager role
+      // Default manager to first available project manager
       const pmEmps = rawEmps.filter(isProjectManager);
       if (pmEmps.length > 0) {
         setForm((prev) => ({
           ...prev,
-          manager: prev.manager || pmEmps[0]?.fullName || ""
+          manager: prev.manager || pmEmps[0]?.fullName || "",
         }));
       }
     } catch (err) {
@@ -121,7 +213,7 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  // Intelligent Auto-Fetch logic for projects
+  // Clean Auto-Fetch project data logic
   const getAutoFetchedProjectData = (custId, custList = customers, ordersList = salesOrders, quotesList = quotations) => {
     const selectedCust = custList.find((c) => (c.id || c._id) === custId) || custList[0];
     if (!selectedCust) return null;
@@ -131,57 +223,61 @@ export default function ProjectsPage() {
 
     // 1. Check matching Sales Order
     const matchedSO = ordersList.find(
-      (o) => (o.customer?.id === actualCustId || o.customer?.name?.toLowerCase() === custName.toLowerCase())
+      (o) => o.customer?.id === actualCustId || o.customer?.name?.toLowerCase() === custName.toLowerCase()
     );
 
     if (matchedSO) {
-      const itemTitle = matchedSO.items?.[0]?.description || matchedSO.items?.[0]?.productCode || "Automation Project";
-      const scope = matchedSO.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+      const rawTitle = matchedSO.items?.[0]?.description || matchedSO.items?.[0]?.productCode || "Automation Project";
+      const cleanTitle = cleanProjectName(rawTitle) || "Automation Engineering Project";
+      const scope =
+        matchedSO.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
       const rev = matchedSO.grandTotal || matchedSO.subtotal || 0;
       return {
-        name: `${custName} - ${itemTitle}`,
+        name: cleanTitle,
         customerId: actualCustId,
         customerName: custName,
         revenue: rev > 0 ? rev : "",
         estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
-        description: scope ? `Scope under Sales Order ${matchedSO.soNo}: ${scope}. Turnkey delivery, site commissioning & handover.` : `Engineering project under ${matchedSO.soNo}.`,
+        description: scope
+          ? `Scope under Sales Order ${matchedSO.soNo}: ${scope}. Turnkey delivery, installation & testing.`
+          : `Engineering project under ${matchedSO.soNo}.`,
         soRef: matchedSO.soNo || "",
-        sourceKey: `SO:${matchedSO.soNo}`
       };
     }
 
     // 2. Check matching Quotation
     const matchedQT = quotesList.find(
-      (q) => (q.customer?.id === actualCustId || q.customer?.name?.toLowerCase() === custName.toLowerCase())
+      (q) => q.customer?.id === actualCustId || q.customer?.name?.toLowerCase() === custName.toLowerCase()
     );
 
     if (matchedQT) {
-      const qSubject = matchedQT.subject || matchedQT.items?.[0]?.description || "SCADA & PLC Automation";
-      const scope = matchedQT.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
+      const rawTitle = matchedQT.subject || matchedQT.items?.[0]?.description || "SCADA & PLC Automation";
+      const cleanTitle = cleanProjectName(rawTitle) || "SCADA & Automation Integration";
+      const scope =
+        matchedQT.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
       const rev = matchedQT.grandTotal || matchedQT.subtotal || 0;
       return {
-        name: `${custName} - ${qSubject}`,
+        name: cleanTitle,
         customerId: actualCustId,
         customerName: custName,
         revenue: rev > 0 ? rev : "",
         estimatedCost: rev > 0 ? Math.round(rev * 0.65) : "",
-        description: scope ? `Scope under Quotation ${matchedQT.quotationNo}: ${scope}. Engineering integration and verification.` : `Scope of work for ${qSubject}.`,
+        description: scope
+          ? `Scope under Quotation ${matchedQT.quotationNo}: ${scope}. Engineering integration & commissioning.`
+          : `Scope of work for ${cleanTitle}.`,
         soRef: matchedQT.quotationNo || "",
-        sourceKey: `QT:${matchedQT.quotationNo}`
       };
     }
 
-    // 3. Structured fallback based on customer profile
-    const suggestedRev = selectedCust.totalRevenue > 0 ? selectedCust.totalRevenue : 1500000;
+    // 3. Fallback
     return {
-      name: `${custName} - SCADA & Automation Retrofit`,
+      name: "",
       customerId: actualCustId,
       customerName: custName,
-      revenue: suggestedRev,
-      estimatedCost: Math.round(suggestedRev * 0.65),
-      description: `Complete engineering & automation project for ${custName}. Includes PLC logic programming, electrical control panel fabrication, SCADA HMI integration, field sensor wiring, and site commissioning.`,
+      revenue: selectedCust.totalRevenue || "",
+      estimatedCost: selectedCust.totalRevenue ? Math.round(selectedCust.totalRevenue * 0.65) : "",
+      description: "",
       soRef: "",
-      sourceKey: ""
     };
   };
 
@@ -191,28 +287,58 @@ export default function ProjectsPage() {
     const initialCustId = firstCust?.id || firstCust?._id || "";
     const autoData = getAutoFetchedProjectData(initialCustId, customers, salesOrders, quotations) || {};
 
+    setIsCustomProject(false);
     setForm({
-      name: autoData.name || (firstCust?.name ? `${firstCust.name} - Automation Project` : ""),
-      description: autoData.description || "Turnkey automation engineering, SCADA software deployment, and site testing.",
+      name: autoData.name || "",
+      description: autoData.description || "",
       customerId: autoData.customerId || initialCustId,
       customerName: autoData.customerName || firstCust?.name || "",
       manager: defaultManager,
       soRef: autoData.soRef || "",
       status: "Planning",
       priority: "Medium",
-      revenue: autoData.revenue !== undefined ? autoData.revenue : 1500000,
-      estimatedCost: autoData.estimatedCost !== undefined ? autoData.estimatedCost : 975000,
+      revenue: autoData.revenue || "",
+      estimatedCost: autoData.estimatedCost || "",
       start: new Date().toISOString().split("T")[0],
       end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-      progress: ""
+      progress: "",
     });
-    setSelectedSource(autoData.sourceKey || "");
     setShowModal(true);
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     loadData();
+  };
+
+  const handleProjectNameChange = (e) => {
+    const selectedVal = e.target.value;
+    if (selectedVal === "__custom__") {
+      setIsCustomProject(true);
+      setForm((prev) => ({ ...prev, name: "" }));
+      return;
+    }
+
+    setIsCustomProject(false);
+    // 1. Check if it's from customer quotations / orders
+    const matchedDoc = customerProjectOptions.find((o) => o.name === selectedVal);
+    if (matchedDoc) {
+      setForm((prev) => ({
+        ...prev,
+        name: matchedDoc.name,
+        revenue: matchedDoc.revenue || prev.revenue,
+        estimatedCost: matchedDoc.estimatedCost || prev.estimatedCost,
+        description: matchedDoc.description || prev.description,
+        soRef: matchedDoc.ref || prev.soRef,
+        customerId: prev.customerId || matchedDoc.customer?.id || "",
+        customerName: prev.customerName || matchedDoc.customer?.name || "",
+      }));
+      return;
+    }
+
+   
+
+    setForm((prev) => ({ ...prev, name: selectedVal }));
   };
 
   const handleCustomerChange = (e) => {
@@ -225,91 +351,39 @@ export default function ProjectsPage() {
 
     const autoData = getAutoFetchedProjectData(custId, customers, salesOrders, quotations);
     if (autoData) {
+      setIsCustomProject(false);
       setForm((f) => ({
         ...f,
         customerId: custId,
         customerName: selected.name,
-        name: autoData.name || `${selected.name} - Automation Project`,
-        revenue: autoData.revenue || f.revenue,
+        name: autoData.name || f.name,
+        revenue: autoData.revenue || f.revenue, 
         estimatedCost: autoData.estimatedCost || f.estimatedCost,
         description: autoData.description || f.description,
-        soRef: autoData.soRef || ""
+        soRef: autoData.soRef || "",
       }));
-      setSelectedSource(autoData.sourceKey || "");
-      showToast(`Auto-fetched project details for ${selected.name}`);
     } else {
       setForm((f) => ({
         ...f,
         customerId: custId,
         customerName: selected.name,
-        name: `${selected.name} - Automation Project`
       }));
-    }
-  };
-
-  const handleAutoFetchFromSource = (sourceKey) => {
-    setSelectedSource(sourceKey);
-    if (!sourceKey) return;
-
-    const [type, refNo] = sourceKey.split(":");
-    if (type === "SO") {
-      const so = salesOrders.find((o) => o.soNo === refNo);
-      if (so) {
-        const custId = so.customer?.id || "";
-        const custName = so.customer?.name || form.customerName;
-        const itemTitle = so.items?.[0]?.description || so.items?.[0]?.productCode || "Automation Project";
-        const scope = so.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
-        const rev = so.grandTotal || so.subtotal || 0;
-
-        setForm((f) => ({
-          ...f,
-          name: `${custName} - ${itemTitle}`,
-          customerId: custId || f.customerId,
-          customerName: custName,
-          revenue: rev > 0 ? rev : f.revenue,
-          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : f.estimatedCost,
-          description: scope ? `Execution of Sales Order ${so.soNo}: ${scope}. Turnkey delivery and installation.` : f.description,
-          soRef: so.soNo
-        }));
-        showToast(`Auto-filled project from Sales Order ${so.soNo}`);
-      }
-    } else if (type === "QT") {
-      const qt = quotations.find((q) => q.quotationNo === refNo);
-      if (qt) {
-        const custId = qt.customer?.id || "";
-        const custName = qt.customer?.name || form.customerName;
-        const qTitle = qt.subject || qt.items?.[0]?.description || "Engineering Scope";
-        const scope = qt.items?.map((i) => `${i.description || i.productCode} (${i.qty} ${i.unit || "Nos"})`).join(", ") || "";
-        const rev = qt.grandTotal || qt.subtotal || 0;
-
-        setForm((f) => ({
-          ...f,
-          name: `${custName} - ${qTitle}`,
-          customerId: custId || f.customerId,
-          customerName: custName,
-          revenue: rev > 0 ? rev : f.revenue,
-          estimatedCost: rev > 0 ? Math.round(rev * 0.65) : f.estimatedCost,
-          description: scope ? `Quotation ${qt.quotationNo} Scope: ${scope}. System testing and commissioning.` : f.description,
-          soRef: qt.quotationNo
-        }));
-        showToast(`Auto-filled project from Quotation ${qt.quotationNo}`);
-      }
     }
   };
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) return showToast("Project name is required", "error");
+    if (!form.name.trim()) return showToast("Project Name is required", "error");
     if (!form.customerName.trim()) return showToast("Customer is required", "error");
 
     setSubmitting(true);
     try {
       await createProject({
-        name: form.name,
+        name: form.name.trim(),
         description: form.description,
         customer: {
           id: form.customerId,
-          name: form.customerName
+          name: form.customerName,
         },
         manager: form.manager,
         soRef: form.soRef || "",
@@ -319,11 +393,10 @@ export default function ProjectsPage() {
         estimatedCost: Number(form.estimatedCost) || 0,
         start: form.start,
         end: form.end,
-        progress: Number(form.progress) || 0
+        progress: Number(form.progress) || 0,
       });
       showToast("Project created successfully!");
       setShowModal(false);
-      setSelectedSource("");
       const defaultManager = projectManagers[0]?.fullName || "";
       setForm({
         name: "",
@@ -338,25 +411,68 @@ export default function ProjectsPage() {
         estimatedCost: "",
         start: new Date().toISOString().split("T")[0],
         end: new Date(Date.now() + 60 * 86400000).toISOString().split("T")[0],
-        progress: ""
+        progress: "",
       });
       loadData();
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err.message || "Failed to create project", "error");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Mobile filtered projects
+  const displayedMobileProjects = useMemo(() => {
+    if (!mobileSearch.trim()) return projects;
+    const q = mobileSearch.toLowerCase().trim();
+    return projects.filter((p) => {
+      return (
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.projectId && p.projectId.toLowerCase().includes(q)) ||
+        (p.customer?.name && p.customer.name.toLowerCase().includes(q)) ||
+        (p.manager && p.manager.toLowerCase().includes(q)) ||
+        (p.status && p.status.toLowerCase().includes(q))
+      );
+    });
+  }, [projects, mobileSearch]);
+
+  const handleMobileExport = () => {
+    if (projects.length === 0) return showToast("No records to export", "error");
+    const headers = ["Project ID", "Project Name", "Customer", "Manager", "Start Date", "End Date", "Revenue", "Cost", "Margin %", "Status"];
+    const rows = projects.map((p) => [
+      p.projectId || "",
+      p.name || "",
+      p.customer?.name || "",
+      p.manager || "",
+      p.start ? fmtDate(p.start) : "",
+      p.end ? fmtDate(p.end) : "",
+      p.revenue || 0,
+      p.actualCost || 0,
+      p.margin || 0,
+      p.status || "",
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `projects-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Projects exported as CSV");
   };
 
   return (
     <>
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium ${
+          className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl text-white text-sm font-semibold transition-all flex items-center gap-2 ${
             toast.type === "error" ? "bg-red-600" : "bg-emerald-600"
           }`}
         >
-          {toast.type === "error" ? "⚠️" : "✅"} {toast.msg}
+          {toast.type === "error" ? <AlertCircle className="size-4" /> : <CheckCircle2 className="size-4" />}
+          <span>{toast.msg}</span>
         </div>
       )}
 
@@ -370,14 +486,14 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95 shrink-0 self-start sm:self-auto"
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95 shrink-0 self-start sm:self-auto cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Project
           </button>
         </div>
 
-        {/* KPIs */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* KPIs Grid (2x2 on Mobile, 4x1 on PC) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
           <Kpi
             label="Total Projects"
             value={kpis?.total || 0}
@@ -385,14 +501,14 @@ export default function ProjectsPage() {
             icon={FolderKanban}
           />
           <Kpi
-            label="Total Contract Revenue"
+            label="Contract Revenue"
             value={fmtINR(kpis?.totalRevenue || 0)}
             tone="success"
             sub={`${kpis?.completed || 0} Completed`}
             icon={IndianRupee}
           />
           <Kpi
-            label="Actual Incurred Cost"
+            label="Incurred Cost"
             value={fmtINR(kpis?.totalActualCost || 0)}
             tone="warning"
             sub="Materials, Subcontractor, Labor"
@@ -402,54 +518,31 @@ export default function ProjectsPage() {
             label="Overall Gross Margin"
             value={`${(kpis?.avgMargin || 0).toFixed(1)}%`}
             tone={(kpis?.avgMargin || 0) >= 15 ? "success" : "danger"}
-            sub={`Net Profit: ${fmtINR(kpis?.totalGrossProfit || 0)}`}
+            sub={`Net: ${fmtINR(kpis?.totalGrossProfit || 0)}`}
             icon={Briefcase}
           />
         </div>
 
-        {/* Toolbar & Filters */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {["All", "In Progress", "Planning", "Completed", "On Hold"].map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  statusFilter === st
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search projects, client, manager..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        {/* Status Filter Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 mb-4">
+          {["All", "In Progress", "Planning", "Completed", "On Hold"].map((st) => (
             <button
-              type="submit"
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+              key={st}
+              type="button"
+              onClick={() => setStatusFilter(st)}
+              className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                statusFilter === st
+                  ? "bg-gray-900 text-white shadow-sm"
+                  : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
             >
-              Search
+              {st}
             </button>
-          </form>
+          ))}
         </div>
 
-        {/* Projects Table */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        {/* Desktop Projects Table */}
+        <div className="hidden md:block bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-gray-500 flex flex-col items-center gap-3">
               <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full" />
@@ -468,7 +561,7 @@ export default function ProjectsPage() {
                   <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold">
                     <th className="py-3 px-4">Project</th>
                     <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Manager & Team</th>
+                    <th className="py-3 px-4">Project Manager</th>
                     <th className="py-3 px-4">Schedule</th>
                     <th className="py-3 px-4">Progress</th>
                     <th className="py-3 px-4 text-right">Revenue</th>
@@ -503,14 +596,12 @@ export default function ProjectsPage() {
                             {p.projectId} · {p.priority} Priority
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-gray-700">
-                          {p.customer?.name || "—"}
-                        </td>
+                        <td className="py-3.5 px-4 font-medium text-gray-700">{p.customer?.name || "—"}</td>
                         <td className="py-3.5 px-4 text-gray-600">
-                          <div className="font-semibold text-gray-800">{p.manager}</div>
+                          <div className="font-semibold text-gray-800">{p.manager || "—"}</div>
                           <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                             <Users className="w-3 h-3" />
-                            {p.team?.length || 0} members · {p.suppliers?.length || 0} suppliers
+                            {p.team?.length || 0} team · {p.suppliers?.length || 0} vendors
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap">
@@ -519,20 +610,14 @@ export default function ProjectsPage() {
                         </td>
                         <td className="py-3.5 px-4 w-32">
                           <div className="flex items-center justify-between text-[11px] mb-1">
-                            <span className="font-semibold text-gray-700">{p.progress}%</span>
+                            <span className="font-semibold text-gray-700">{p.progress || 0}%</span>
                           </div>
-                          <Progress value={p.progress} className="h-1.5" />
+                          <Progress value={p.progress || 0} className="h-1.5" />
                         </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-gray-900">
-                          {fmtINR(p.revenue)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-medium text-gray-700">
-                          {fmtINR(p.actualCost)}
-                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-gray-900">{fmtINR(p.revenue)}</td>
+                        <td className="py-3.5 px-4 text-right font-medium text-gray-700">{fmtINR(p.actualCost)}</td>
                         <td className="py-3.5 px-4 text-right">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-md font-bold text-[11px] border ${marginColor}`}
-                          >
+                          <span className={`inline-block px-2 py-0.5 rounded-md font-bold text-[11px] border ${marginColor}`}>
                             {marginVal.toFixed(1)}%
                           </span>
                         </td>
@@ -555,252 +640,332 @@ export default function ProjectsPage() {
             </div>
           )}
         </div>
+
+        {/* Mobile Responsive Cards View */}
+        <div className="md:hidden space-y-3">
+          {/* Mobile Search & Export Toolbar */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={mobileSearch}
+                onChange={(e) => setMobileSearch(e.target.value)}
+                placeholder="Search projects, client, PM…"
+                className="h-9 pl-8 text-xs bg-white"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-9 gap-1.5 px-3 text-xs shrink-0 cursor-pointer"
+              onClick={handleMobileExport}
+            >
+              <Download className="size-3.5" />
+              <span>Export</span>
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full" />
+            </div>
+          ) : displayedMobileProjects.length === 0 ? (
+            <div className="panel p-8 text-center text-sm text-muted-foreground bg-white border rounded-xl">
+              No projects found
+            </div>
+          ) : (
+            displayedMobileProjects.map((p, i) => {
+              const marginVal = p.margin || 0;
+              return (
+                <div
+                  key={p.projectId || p._id || i}
+                  className="panel p-3.5 space-y-2.5 bg-white border border-gray-200/80 rounded-xl shadow-xs"
+                >
+                  {/* Card Header: Project Name + Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
+                        {p.projectId}
+                      </span>
+                      <h4 className="font-bold text-sm text-gray-900 mt-1 leading-snug truncate">{p.name}</h4>
+                      <div className="text-xs text-gray-500 mt-0.5 font-medium">👤 {p.customer?.name || "Client"}</div>
+                    </div>
+                    <StatusBadge value={p.status} />
+                  </div>
+
+                  {/* Card Grid Info: PM, Schedule, Progress */}
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50/90 p-2.5 rounded-xl border border-gray-200 text-xs">
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase font-semibold">Project Manager</div>
+                      <div className="font-medium text-gray-800 mt-0.5 truncate">{p.manager || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase font-semibold">Timeline</div>
+                      <div className="font-medium text-gray-800 mt-0.5">
+                        {fmtDate(p.start)} → {fmtDate(p.end)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase font-semibold">Contract Revenue</div>
+                      <div className="font-bold text-gray-900 mt-0.5 font-mono">{fmtINR(p.revenue)}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-gray-400 uppercase font-semibold">Margin</div>
+                      <div className="font-bold text-emerald-700 mt-0.5">{marginVal.toFixed(1)}%</div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-gray-600 font-medium">
+                      <span>Completion Progress</span>
+                      <span>{p.progress || 0}%</span>
+                    </div>
+                    <Progress value={p.progress || 0} className="h-1.5" />
+                  </div>
+
+                  {/* Action Link Footer */}
+                  <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                    <span className="text-gray-400 text-[11px]">{p.priority} Priority</span>
+                    <Link
+                      href={`/projects/${p.projectId || p._id}`}
+                      className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-95 shadow-2xs"
+                    >
+                      <span>View Details</span>
+                      <ArrowRight className="size-3" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* ─── CREATE PROJECT MODAL ────────────────────────────────────────────── */}
+      {/* ─── CREATE PROJECT MODAL (NO OVERFLOW & CLEAN INPUTS) ────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col my-auto border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header (Fixed) */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
                   <FolderKanban className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">Create New Project</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900">Create New Project</h3>
                   <p className="text-xs text-gray-500">Initiate an engineering or automation project</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-lg p-1"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-base transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateProject} className="space-y-4">
-              {/* Auto-Fetch Project Toolbar */}
-              <div className="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-blue-50/90 border border-blue-200/90 rounded-2xl shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
-                    <Sparkles className="w-4 h-4 text-blue-600 animate-pulse" />
-                    <span>Auto-Fetch Project from Orders &amp; Quotations</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const autoData = getAutoFetchedProjectData(form.customerId);
-                      if (autoData) {
-                        setForm((f) => ({
-                          ...f,
-                          name: autoData.name || f.name,
-                          revenue: autoData.revenue || f.revenue,
-                          estimatedCost: autoData.estimatedCost || f.estimatedCost,
-                          description: autoData.description || f.description,
-                          soRef: autoData.soRef || f.soRef
-                        }));
-                        showToast("Auto-fetched project details!");
-                      }
-                    }}
-                    className="text-[11px] font-semibold text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-300 shadow-2xs transition-all flex items-center gap-1 active:scale-95"
-                  >
-                    ⚡ Auto-Fill Project
-                  </button>
-                </div>
-                {(salesOrders.length > 0 || quotations.length > 0) ? (
-                  <select
-                    value={selectedSource}
-                    onChange={(e) => handleAutoFetchFromSource(e.target.value)}
-                    className="w-full text-xs border border-blue-200 rounded-xl px-3 py-2 bg-white text-gray-800 font-medium focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs"
-                  >
-                    <option value="">-- Select Sales Order / Quotation to Auto-Fill Form --</option>
-                    {salesOrders.map((so) => (
-                      <option key={so._id || so.soNo} value={`SO:${so.soNo}`}>
-                        📋 Order: {so.soNo} — {so.customer?.name} (₹{Number(so.grandTotal || 0).toLocaleString("en-IN")})
-                      </option>
-                    ))}
-                    {quotations.map((q) => (
-                      <option key={q._id || q.quotationNo} value={`QT:${q.quotationNo}`}>
-                        📄 Quotation: {q.quotationNo} — {q.customer?.name} ({q.subject || "Project"}) (₹{Number(q.grandTotal || 0).toLocaleString("en-IN")})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="text-[11px] text-blue-700 flex items-center gap-1">
-                    <span>💡 Selecting a client will automatically fetch and structure their project title, budget &amp; scope.</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    Project Title <span className="text-red-500">*</span>
-                  </label>
-                  {form.soRef && (
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md border border-blue-200">
-                      Linked: {form.soRef}
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Weighbridge SCADA Integration & PLC Retrofit"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none font-medium text-gray-900"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Form with separated scrollable body and fixed footer */}
+            <form onSubmit={handleCreateProject} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* Scrollable Form Fields */}
+              <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
+                {/* Project Name Selection (From Dropdown) */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Customer / Client <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={form.customerId}
-                    onChange={handleCustomerChange}
-                    required
-                    className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="">
-                      {customers.length > 0 ? "-- Select Customer --" : "No customers yet -- add one in Customers first"}
-                    </option>
-                    {customers.map((c) => (
-                      <option key={c.id || c._id} value={c.id || c._id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Project Name <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomProject((prev) => !prev);
+                        if (!isCustomProject) {
+                          setForm((prev) => ({ ...prev, name: "" }));
+                        }
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-700 font-medium hover:underline cursor-pointer"
+                    >
+                      {isCustomProject ? "Select from list" : "+ Custom project name"}
+                    </button>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Project Manager
-                  </label>
-                  <select
-                    value={form.manager}
-                    onChange={(e) => setForm({ ...form, manager: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-800"
-                  >
-                    <option value="">
-                      {employees.length > 0 ? "-- Select Project Manager --" : "No employees yet -- add one in HR first"}
-                    </option>
-                    {(projectManagers.length > 0 ? projectManagers : employees).map((emp) => (
-                      <option key={emp._id || emp.employeeCode} value={emp.fullName}>
-                        {emp.fullName} {emp.role ? `(${emp.role})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {projectManagers.length === 0 && employees.length > 0 && (
-                    <p className="text-[11px] text-amber-600 mt-1">
-                      No one is tagged &quot;Project Manager&quot; in HR yet -- showing all employees.
-                    </p>
+                  {!isCustomProject ? (
+                    <select
+                      value={form.name}
+                      onChange={handleProjectNameChange}
+                      required
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-medium"
+                    >
+                      <option value="">-- Select Project Name --</option>
+                      {customerProjectOptions.map((opt, idx) => (
+                        <option key={`doc-${idx}`} value={opt.name}>
+                          {opt.name} ({opt.ref ? `${opt.ref}` : "Order/Quote"})
+                        </option>
+                      ))}
+
+                      <option value="__custom__">-- Enter Custom Project Name --</option>
+                    </select>
+                  ) : (
+                    <div className="space-y-1.5 animate-in fade-in duration-150">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Type custom project name..."
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-medium"
+                        autoFocus
+                      />
+                    </div>
                   )}
                 </div>
 
+                {/* Grid: Customer & Project Manager */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Customer */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Customer / Client <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={form.customerId}
+                      onChange={handleCustomerChange}
+                      required
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+                    >
+                      <option value="">
+                        {customers.length > 0 ? "-- Select Customer --" : "No customers yet"}
+                      </option>
+                      {customers.map((c) => (
+                        <option key={c.id || c._id} value={c.id || c._id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Project Manager - ONLY Project Managers List */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Project Manager</label>
+                    <select
+                      value={form.manager}
+                      onChange={(e) => setForm({ ...form, manager: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-medium"
+                    >
+                      <option value="">-- Select Project Manager --</option>
+                      {projectManagers.map((emp) => (
+                        <option key={emp._id || emp.employeeCode || emp.fullName} value={emp.fullName}>
+                          {emp.fullName} {emp.role ? `(${emp.role})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Contract Revenue */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Contract Revenue (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 1500000"
+                      value={form.revenue}
+                      onChange={(e) => setForm({ ...form, revenue: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-mono"
+                    />
+                  </div>
+
+                  {/* Estimated Cost Budget */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Estimated Cost Budget (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 950000"
+                      value={form.estimatedCost}
+                      onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-mono"
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={form.start}
+                      onChange={(e) => setForm({ ...form, start: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+                    />
+                  </div>
+
+                  {/* Target End Date */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Target End Date</label>
+                    <input
+                      type="date"
+                      value={form.end}
+                      onChange={(e) => setForm({ ...form, end: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+                    />
+                  </div>
+
+                  {/* Initial Status */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Initial Status</label>
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+                    >
+                      <option value="Planning">Planning</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="On Hold">On Hold</option>
+                    </select>
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={form.priority}
+                      onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Description / Scope */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Contract Revenue (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 1500000"
-                    value={form.revenue}
-                    onChange={(e) => setForm({ ...form, revenue: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Description / Scope of Work</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Outline key deliverables, technical specs, site constraints..."
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Estimated Cost Budget (₹)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="e.g. 950000"
-                    value={form.estimatedCost}
-                    onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Target End Date</label>
-                  <input
-                    type="date"
-                    value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Initial Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="Planning">Planning</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="On Hold">On Hold</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Priority</label>
-                  <select
-                    value={form.priority}
-                    onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                    className="w-full text-sm border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Description / Scope of Work</label>
-                <textarea
-                  rows={2}
-                  placeholder="Outline key deliverables, technical specs, site constraints..."
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full text-sm border rounded-xl px-3.5 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+              {/* Modal Actions Footer (Fixed bottom) */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800"
+                  className="px-5 py-2 text-xs font-semibold border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition-all disabled:opacity-60"
+                  className="px-6 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm disabled:opacity-60 cursor-pointer transition-all flex items-center gap-1.5"
                 >
                   {submitting ? "Creating..." : "Create Project"}
                 </button>

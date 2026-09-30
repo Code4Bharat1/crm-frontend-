@@ -261,6 +261,28 @@ export default function EmailPage() {
   };
 
 
+  const handleLinkToQuotation = (email) => {
+    // 1. Mark as read on backend (non-blocking)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
+
+    // 2. Build URL parameters to forward to /quotations
+    const params = new URLSearchParams();
+    params.set("action", "create");
+    if (email.customerName) params.set("customerName", email.customerName);
+    if (email.contact) params.set("email", email.contact);
+    if (email.subject) params.set("subject", `Quote for: ${email.subject}`);
+    const noteText = email.fullText || email.preview || "";
+    if (noteText) {
+      params.set("notes", `Requirement from Email (${email.contact || ""}):\nSubject: ${email.subject || ""}\n\n${noteText}`);
+    }
+
+    toast.success("Opening quotation builder...", {
+      description: `Linking inquiry from ${email.customerName || email.contact}`
+    });
+
+    router.push(`/quotations?${params.toString()}`);
+  };
+
   return (
     <>
       <PageHeader
@@ -309,7 +331,14 @@ export default function EmailPage() {
                       {!e.followedUp && (
                         <Button size="sm" variant="outline" onClick={() => handleFollowUp(e)}>Add follow-up</Button>
                       )}
-                      <Button size="sm" variant="outline">Link to quotation</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleLinkToQuotation(e)}
+                        className="hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 transition-colors"
+                      >
+                        Link to quotation
+                      </Button>
                     </div>
                   </li>
                 );
@@ -338,6 +367,14 @@ export default function EmailPage() {
                     ) : (
                       <Button size="sm" variant="secondary" disabled>Follow-up Sent</Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleLinkToQuotation(e)}
+                      className="hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 transition-colors"
+                    >
+                      Link to quotation
+                    </Button>
                   </div>
                 </li>
               ))}

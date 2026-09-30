@@ -52,6 +52,7 @@ import { WeekendPolicyCard } from "@/components/WeekendPolicyCard";
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from "@/services/employeeService";
 import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
 import { SIDEBAR_MODULES, ALL_SIDEBAR_ITEMS } from "@/lib/sidebarModules";
+import { isValidPhoneNumber, sanitizePhoneInput } from "@/lib/validators";
 
 
 const cleanRoleStr = (s) => (s || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -135,8 +136,13 @@ export default function Page() {
 
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
-    if (!editEmployeeFormData.firstName.trim() || !editEmployeeFormData.lastName.trim() || !editEmployeeFormData.role || !editEmployeeFormData.email.trim()) {
+    if (!editEmployeeFormData.firstName.trim() || !editEmployeeFormData.lastName.trim() || !editEmployeeFormData.role || !editEmployeeFormData.email.trim() || !editEmployeeFormData.phone?.trim()) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (editEmployeeFormData.phone.length !== 10 || !isValidPhoneNumber(editEmployeeFormData.phone)) {
+      toast.error("Please enter a valid 10-digit mobile number (e.g. 9876543210)");
       return;
     }
 
@@ -296,6 +302,11 @@ export default function Page() {
       return;
     }
 
+    if (employeeFormData.phone.length !== 10 || !isValidPhoneNumber(employeeFormData.phone)) {
+      toast.error("Please enter a valid 10-digit mobile number (e.g. 9876543210)");
+      return;
+    }
+
     setIsSubmittingEmployee(true);
     try {
       const res = await createEmployee(employeeFormData);
@@ -438,38 +449,44 @@ export default function Page() {
         title="Roles & Designations"
         subtitle="Manage organizational roles, designations, permissions, and active team member staffing allocations."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
+              size="sm"
               asChild
-              className="gap-1.5"
+              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-card shadow-xs cursor-pointer"
             >
               <Link href="/users-roles">
                 <Lock className="size-3.5" />
-                Configure Permissions
+                <span className="hidden sm:inline">Configure Permissions</span>
+                <span className="sm:hidden">Permissions</span>
               </Link>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setIsRoleModalOpen(true)}
-              className="gap-1.5"
+              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-card shadow-xs cursor-pointer"
             >
               <Plus className="size-3.5" />
-              Create Role
+              <span className="hidden sm:inline">Create Role</span>
+              <span className="sm:hidden">Role</span>
             </Button>
             <Button
+              size="sm"
               onClick={() => handleOpenAssignEmployee(rolesData[0]?.name || "")}
-              className="gap-1.5"
+              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-primary text-primary-foreground shadow-xs cursor-pointer"
             >
-              <UserPlus className="size-4" />
-              Assign Employee
+              <UserPlus className="size-3.5" />
+              <span className="hidden sm:inline">Assign Employee</span>
+              <span className="sm:hidden">Assign</span>
             </Button>
           </div>
         }
       />
 
-      {/* Real Data KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Real Data KPI Cards: 2-col on mobile, 4-col on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <Kpi
           label="Created Roles"
           value={totalRolesCount}
@@ -485,7 +502,7 @@ export default function Page() {
           label="Vacant Positions"
           value={vacantRolesCount}
           tone={vacantRolesCount > 0 ? "warning" : "default"}
-          sub={vacantRolesCount > 0 ? "Roles requiring staffing" : "All created roles staffed"}
+          sub={vacantRolesCount > 0 ? "Roles requiring staffing" : "All roles staffed"}
         />
         <Kpi
           label="Staffed Roles"
@@ -495,12 +512,12 @@ export default function Page() {
       </div>
 
       {/* ─── WEEKEND WORKING POLICY (ADMIN, HR & MANAGER ACCESS ONLY) ─── */}
-      <div className="mt-5">
+      <div className="mt-4 sm:mt-5">
         <WeekendPolicyCard currentUser={currentUser} />
       </div>
 
       {/* Main Roles & Designations Content */}
-      <div className="mt-6">
+      <div className="mt-5 sm:mt-6">
         <Section
           title="Organizational Roles & Designations"
           description="Detailed breakdown of all roles with real staff allocations, departments, and permissions"
@@ -512,14 +529,15 @@ export default function Page() {
             </div>
           }
         >
-          {/* Search & Filter Bar */}
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Search & Filter Bar: Touch-friendly horizontal scroll on mobile */}
+          <div className="mb-4 flex flex-col gap-2.5 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
             {/* Filter Pills */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1 sm:mx-0 sm:px-0">
               <button
+                type="button"
                 onClick={() => setStatusFilter("all")}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0",
                   statusFilter === "all"
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -528,9 +546,10 @@ export default function Page() {
                 All Roles ({rolesData.length})
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter("staffed")}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0",
                   statusFilter === "staffed"
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -539,9 +558,10 @@ export default function Page() {
                 Staffed ({staffedRolesCount})
               </button>
               <button
+                type="button"
                 onClick={() => setStatusFilter("vacant")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0",
                   statusFilter === "vacant"
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -558,12 +578,12 @@ export default function Page() {
 
             {/* Search Input */}
             <div className="relative w-full sm:w-72">
-              <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search role, employee, department..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 text-xs h-9"
+                className="pl-8 text-xs h-8.5 rounded-xl bg-muted/30 border-border"
               />
             </div>
           </div>
@@ -575,7 +595,7 @@ export default function Page() {
               Loading roles and employee data...
             </div>
           ) : filteredRoles.length === 0 ? (
-            <div className="py-14 text-center rounded-lg border border-dashed border-border bg-card">
+            <div className="py-14 text-center rounded-xl border border-dashed border-border bg-card">
               <Shield className="size-8 mx-auto mb-2 text-muted-foreground/50" />
               <p className="font-semibold text-foreground">No roles match your search</p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -602,17 +622,17 @@ export default function Page() {
                   <div
                     key={r.name}
                     className={cn(
-                      "rounded-lg border border-border bg-card transition-all overflow-hidden",
+                      "rounded-xl sm:rounded-2xl border border-border bg-card transition-all overflow-hidden shadow-xs",
                       r.isVacant ? "border-dashed border-amber-500/40 bg-amber-500/5" : "hover:border-border/90"
                     )}
                   >
                     {/* Header Row */}
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 gap-3 sm:gap-4">
                       {/* Left: Role Info */}
-                      <div className="flex items-start gap-3 min-w-0">
+                      <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
                         <button
                           onClick={() => toggleRoleExpand(r.name)}
-                          className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+                          className="mt-0.5 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded cursor-pointer"
                           title="Toggle employee list"
                         >
                           {isExpanded ? (
@@ -622,9 +642,9 @@ export default function Page() {
                           )}
                         </button>
 
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-bold text-foreground text-base leading-none">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <h3 className="font-bold text-foreground text-sm sm:text-base leading-none">
                               {r.name}
                             </h3>
                             {r.isCustomRole && (
@@ -636,57 +656,58 @@ export default function Page() {
                               </Badge>
                             )}
                             {r.isVacant ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-600">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-600">
                                 <AlertCircle className="size-3" />
                                 Vacant Position
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-success">
                                 <CheckCircle2 className="size-3" />
-                                {r.staffCount} {r.staffCount === 1 ? "Employee" : "Employees"} Assigned
+                                {r.staffCount} {r.staffCount === 1 ? "Employee" : "Employees"}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-xs text-muted-foreground leading-relaxed">
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-none">
                             {r.description || "Configured organizational role"}
                           </p>
                         </div>
                       </div>
 
                       {/* Right: Stats & Actions */}
-                      <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                      <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                         {/* Permissions badge */}
                         <div className="text-left sm:text-right">
                           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                             Sidebar Access
                           </span>
                           <span className="font-mono text-xs font-bold text-foreground">
-                            {permissionsCount > 0 ? `${permissionsCount} / ${ALL_SIDEBAR_ITEMS.length} modules` : "Dashboard Only"}
+                            {permissionsCount > 0 ? `${permissionsCount} / ${ALL_SIDEBAR_ITEMS.length} mods` : "Dashboard Only"}
                           </span>
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleOpenAssignEmployee(r.name)}
-                            className="gap-1.5 text-xs h-8"
+                            className="gap-1 text-xs h-8 px-2.5 cursor-pointer"
                           >
                             <UserPlus className="size-3.5" />
-                            Assign Employee
+                            <span className="hidden sm:inline">Assign Employee</span>
+                            <span className="sm:hidden">Assign</span>
                           </Button>
 
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleOpenPermsModal(r)}
-                            className="gap-1.5 text-xs h-8 border-primary/30 text-primary hover:bg-primary/10"
+                            className="gap-1 text-xs h-8 px-2.5 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
                             title="Configure role permissions directly in HR"
                           >
                             <Lock className="size-3.5" />
-                            Permissions
+                            <span>Perms</span>
                           </Button>
 
                           {r.isCustomRole && r.isVacant && (
@@ -694,7 +715,7 @@ export default function Page() {
                               size="icon"
                               variant="ghost"
                               onClick={() => handleDeleteRole(r.id, r.name)}
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 cursor-pointer"
                               title="Delete vacant role"
                             >
                               <Trash2 className="size-3.5" />
@@ -791,7 +812,7 @@ export default function Page() {
 
       {/* Assign / Create Employee Dialog */}
       <Dialog open={isEmployeeModalOpen} onOpenChange={setIsEmployeeModalOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="w-[94vw] max-w-[480px] p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Assign Employee to Role</DialogTitle>
             <DialogDescription>
@@ -860,19 +881,59 @@ export default function Page() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="phone">Phone *</Label>
+                  {employeeFormData.phone ? (
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {employeeFormData.phone.length}/10 digits
+                    </span>
+                  ) : null}
+                </div>
                 <Input
                   id="phone"
-                  placeholder="+91 98765 43210"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
                   value={employeeFormData.phone}
                   onChange={(e) =>
                     setEmployeeFormData((prev) => ({
                       ...prev,
-                      phone: e.target.value,
+                      phone: sanitizePhoneInput(e.target.value),
                     }))
                   }
+                  className={cn(
+                    employeeFormData.phone &&
+                      employeeFormData.phone.length === 10 &&
+                      !isValidPhoneNumber(employeeFormData.phone) &&
+                      "border-destructive focus-visible:ring-destructive",
+                    employeeFormData.phone &&
+                      employeeFormData.phone.length < 10 &&
+                      "border-amber-500 focus-visible:ring-amber-500",
+                    employeeFormData.phone &&
+                      isValidPhoneNumber(employeeFormData.phone) &&
+                      "border-emerald-500 focus-visible:ring-emerald-500"
+                  )}
                   required
                 />
+                {employeeFormData.phone && employeeFormData.phone.length < 10 && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Enter {10 - employeeFormData.phone.length} more digit{10 - employeeFormData.phone.length > 1 ? "s" : ""}
+                  </p>
+                )}
+                {employeeFormData.phone &&
+                  employeeFormData.phone.length === 10 &&
+                  !isValidPhoneNumber(employeeFormData.phone) && (
+                    <p className="text-[11px] text-destructive font-medium mt-1">
+                      Must start with 6, 7, 8, or 9
+                    </p>
+                  )}
+                {employeeFormData.phone &&
+                  isValidPhoneNumber(employeeFormData.phone) && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> Valid 10-digit number
+                    </p>
+                  )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email *</Label>
@@ -921,7 +982,7 @@ export default function Page() {
 
       {/* Quick Create Role Dialog */}
       <Dialog open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="w-[94vw] max-w-[420px] p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Create New Role</DialogTitle>
             <DialogDescription>
@@ -998,7 +1059,7 @@ export default function Page() {
 
       {/* Edit Employee Dialog */}
       <Dialog open={isEditEmployeeModalOpen} onOpenChange={setIsEditEmployeeModalOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="w-[94vw] max-w-[480px] p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Edit Employee Details</DialogTitle>
             <DialogDescription>
@@ -1072,19 +1133,59 @@ export default function Page() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="editPhone">Phone *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="editPhone">Phone *</Label>
+                  {editEmployeeFormData.phone ? (
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {editEmployeeFormData.phone.length}/10 digits
+                    </span>
+                  ) : null}
+                </div>
                 <Input
                   id="editPhone"
-                  placeholder="+91 98765 43210"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
                   value={editEmployeeFormData.phone}
                   onChange={(e) =>
                     setEditEmployeeFormData((prev) => ({
                       ...prev,
-                      phone: e.target.value,
+                      phone: sanitizePhoneInput(e.target.value),
                     }))
                   }
+                  className={cn(
+                    editEmployeeFormData.phone &&
+                      editEmployeeFormData.phone.length === 10 &&
+                      !isValidPhoneNumber(editEmployeeFormData.phone) &&
+                      "border-destructive focus-visible:ring-destructive",
+                    editEmployeeFormData.phone &&
+                      editEmployeeFormData.phone.length < 10 &&
+                      "border-amber-500 focus-visible:ring-amber-500",
+                    editEmployeeFormData.phone &&
+                      isValidPhoneNumber(editEmployeeFormData.phone) &&
+                      "border-emerald-500 focus-visible:ring-emerald-500"
+                  )}
                   required
                 />
+                {editEmployeeFormData.phone && editEmployeeFormData.phone.length < 10 && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Enter {10 - editEmployeeFormData.phone.length} more digit{10 - editEmployeeFormData.phone.length > 1 ? "s" : ""}
+                  </p>
+                )}
+                {editEmployeeFormData.phone &&
+                  editEmployeeFormData.phone.length === 10 &&
+                  !isValidPhoneNumber(editEmployeeFormData.phone) && (
+                    <p className="text-[11px] text-destructive font-medium mt-1">
+                      Must start with 6, 7, 8, or 9
+                    </p>
+                  )}
+                {editEmployeeFormData.phone &&
+                  isValidPhoneNumber(editEmployeeFormData.phone) && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> Valid 10-digit number
+                    </p>
+                  )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="editEmail">Work Email *</Label>
@@ -1193,7 +1294,7 @@ export default function Page() {
 
       {/* Delete Employee Confirmation Dialog */}
       <Dialog open={isDeleteEmployeeModalOpen} onOpenChange={setIsDeleteEmployeeModalOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="w-[94vw] max-w-[420px] p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertCircle className="size-5" />
@@ -1247,7 +1348,7 @@ export default function Page() {
 
       {/* ─── ROLE PERMISSIONS CONFIGURATION MODAL (ADMIN HR CONFIG) ─── */}
       <Dialog open={isPermsModalOpen} onOpenChange={setIsPermsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] flex flex-col p-0 rounded-2xl overflow-hidden">
           <DialogHeader className="p-6 pb-4 border-b border-border">
             <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
               <div>

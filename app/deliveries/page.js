@@ -11,6 +11,16 @@ import { fetchApi } from "@/services/api";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { LineItemsEditor } from "@/components/LineItemsEditor";
+import {
+  Printer,
+  Pencil,
+  Truck,
+  CheckCircle2,
+  Trash2,
+  FileText,
+  Layers,
+  ArrowRight
+} from "lucide-react";
 
 const emptyForm = {
   soRef: "", customer: { name: "", address: "", contactPerson: "", phone: "" },
@@ -131,90 +141,284 @@ export default function DeliveriesPage() {
   const inTransit = notes.filter(n => n.status === "In Transit").length;
   const delivered = notes.filter(n => n.status === "Delivered").length;
 
-  const columns = [
-    { header: "DN No.", cell: (d) => <Link href={`/deliveries/${d.dnNo || d._id}`} className="font-bold text-orange-600 hover:underline">{d.dnNo}</Link> },
-    { header: "Against SO", cell: (d) => <Link href={`/orders/${d.soRef}`} className="text-green-600 hover:underline font-medium">{d.soRef}</Link> },
-    { header: "Customer", cell: (d) => d.customer?.name },
-    { header: "Dispatch", cell: (d) => fmtDate(d.date) },
-    { header: "Transporter", cell: (d) => <div><div>{d.transporter || "—"}</div>{d.lrNumber && <div className="text-xs text-gray-400">LR: {d.lrNumber}</div>}</div> },
-    { header: "Items", cell: (d) => `${d.items?.length || 0} items` },
-    { header: "Status", cell: (d) => <StatusBadge value={d.status} /> },
-    {
-      header: "Invoice Ref",
-      cell: (d) => d.invoiceRef ? (
-        <Link href={`/invoices/${d.invoiceRef}`} className="text-xs font-bold text-red-600 hover:underline">
-          {d.invoiceRef}
-        </Link>
-      ) : (
-        <span className="text-xs text-gray-400">Not Invoiced</span>
-      )
-    },
-    {
-      header: "Actions", cell: (d) => (
-        <div className="flex gap-1.5 flex-wrap items-center">
-          <button onClick={() => setPrintDoc(d)} className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded font-medium">🖨 Print</button>
-          
+  const renderMobileCard = (d) => {
+    return (
+      <div className="p-3.5 space-y-2.5 hover:bg-muted/30 transition-colors">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <Link
+              href={`/deliveries/${d.dnNo || d._id}`}
+              className="font-bold text-sm text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1 font-mono"
+            >
+              <FileText className="size-3.5" />
+              {d.dnNo}
+            </Link>
+            <p className="text-xs font-semibold text-foreground truncate mt-0.5">
+              {d.customer?.name || "Unnamed Customer"}
+            </p>
+            {d.soRef && (
+              <p className="text-[11px] text-muted-foreground truncate font-mono">SO: {d.soRef}</p>
+            )}
+          </div>
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <StatusBadge value={d.status} />
+            <span className="text-[11px] text-muted-foreground">{fmtDate(d.date)}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/40 p-2.5 text-xs border border-border/40">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Dispatch Date
+            </span>
+            <span className="font-medium text-foreground text-xs">{fmtDate(d.date)}</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Items
+            </span>
+            <span className="font-medium text-foreground text-xs">{d.items?.length || 0} items</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Transporter
+            </span>
+            <span className="font-medium text-muted-foreground text-xs truncate block">
+              {d.transporter || "—"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-border/40">
+          <button
+            onClick={() => setPrintDoc(d)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-muted hover:bg-muted/80 rounded-lg font-medium text-foreground transition-colors"
+          >
+            <Printer className="size-3 text-muted-foreground" />
+            <span>Print</span>
+          </button>
+
           {d.invoiceRef ? (
             <Link
               href={`/invoices/${d.invoiceRef}`}
-              className="px-2.5 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-800 rounded font-semibold transition-colors flex items-center gap-1 shadow-sm"
+              title={`Tax Invoice: ${d.invoiceRef}`}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg font-semibold transition-colors shadow-2xs"
             >
-              <span>👁 View Inv</span>
-              <span className="font-mono text-[11px]">({d.invoiceRef})</span>
+              <CheckCircle2 className="size-3 text-rose-600 dark:text-rose-400" />
+              <span>View Inv</span>
             </Link>
           ) : (
             <>
-              <button onClick={() => { setForm({ ...d }); setEditingId(d.dnNo || d._id); setShowForm(true); }} className="px-2 py-1 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded font-medium">Edit</button>
+              <button
+                onClick={() => {
+                  setForm({ ...d });
+                  setEditingId(d.dnNo || d._id);
+                  setShowForm(true);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 rounded-lg font-semibold transition-colors"
+              >
+                <Pencil className="size-3 text-amber-600 dark:text-amber-400" />
+                <span>Edit</span>
+              </button>
               {d.status !== "Delivered" && (
-                <button onClick={() => { setDeliverModal(d); setReceivedBy(""); }} className="px-2.5 py-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded font-semibold transition-colors">
-                  ✓ Delivered
+                <button
+                  onClick={() => {
+                    setDeliverModal(d);
+                    setReceivedBy("");
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg font-semibold transition-colors"
+                >
+                  <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Delivered</span>
                 </button>
               )}
               <button
                 onClick={() => handleConvertToInvoice(d)}
-                className="px-2.5 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded font-bold shadow-sm transition-all"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold shadow-xs transition-colors"
               >
-                → Invoice
+                <ArrowRight className="size-3" />
+                <span>Invoice</span>
               </button>
             </>
           )}
-          <button onClick={() => handleDelete(d.dnNo || d._id)} className="px-2 py-1 text-xs bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-red-600 rounded font-medium">Del</button>
+
+          <button
+            onClick={() => handleDelete(d.dnNo || d._id)}
+            className="inline-flex items-center justify-center p-1.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
         </div>
-      )
+      </div>
+    );
+  };
+
+  const columns = [
+    {
+      header: "DN No.",
+      cell: (d) => (
+        <div className="whitespace-nowrap">
+          <Link
+            href={`/deliveries/${d.dnNo || d._id}`}
+            className="font-bold text-xs sm:text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:underline inline-flex items-center gap-1 font-mono"
+          >
+            {d.dnNo}
+          </Link>
+          {d.soRef && (
+            <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+              SO: <Link href={`/orders/${d.soRef}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">{d.soRef}</Link>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Customer",
+      cell: (d) => (
+        <div className="min-w-0 max-w-[160px] lg:max-w-xs font-semibold text-foreground truncate text-xs sm:text-sm">
+          {d.customer?.name || "Unnamed Customer"}
+        </div>
+      ),
+    },
+    {
+      header: "Dispatch",
+      cell: (d) => (
+        <span className="text-xs text-foreground whitespace-nowrap font-medium">
+          {fmtDate(d.date)}
+        </span>
+      ),
+    },
+    {
+      header: "Transporter",
+      cell: (d) => (
+        <div className="text-xs text-foreground whitespace-nowrap">
+          <div>{d.transporter || "—"}</div>
+          {d.lrNumber && (
+            <div className="text-[10px] text-muted-foreground font-mono">LR: {d.lrNumber}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Items",
+      cell: (d) => {
+        const count = d.items?.length || 0;
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-muted/80 px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border/40 whitespace-nowrap">
+            <Layers className="size-3 text-muted-foreground/70" />
+            <span>{count} {count === 1 ? "item" : "items"}</span>
+          </span>
+        );
+      },
+    },
+    {
+      header: "Status",
+      cell: (d) => <StatusBadge value={d.status} />,
+    },
+    {
+      header: "Actions",
+      className: "text-right",
+      cell: (d) => (
+        <div className="flex items-center justify-end gap-1 flex-nowrap">
+          <button
+            onClick={() => setPrintDoc(d)}
+            title="Print Delivery Note"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-all hover:border-border/80 shadow-2xs whitespace-nowrap cursor-pointer"
+          >
+            <Printer className="size-3 text-muted-foreground" />
+            <span>Print</span>
+          </button>
+          
+          {d.invoiceRef ? (
+            <Link
+              href={`/invoices/${d.invoiceRef}`}
+              title={`Tax Invoice: ${d.invoiceRef}`}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20 hover:bg-rose-500/20 rounded-lg font-semibold transition-colors shadow-2xs whitespace-nowrap"
+            >
+              <CheckCircle2 className="size-3 text-rose-600 dark:text-rose-400" />
+              <span>View Inv</span>
+            </Link>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setForm({ ...d });
+                  setEditingId(d.dnNo || d._id);
+                  setShowForm(true);
+                }}
+                title="Edit Delivery Note"
+                className="inline-flex items-center gap-0.5 px-2 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition-all whitespace-nowrap cursor-pointer"
+              >
+                <Pencil className="size-3 text-amber-600 dark:text-amber-400" />
+                <span>Edit</span>
+              </button>
+              {d.status !== "Delivered" && (
+                <button
+                  onClick={() => {
+                    setDeliverModal(d);
+                    setReceivedBy("");
+                  }}
+                  title="Mark Delivered"
+                  className="inline-flex items-center gap-0.5 px-2 py-1 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all whitespace-nowrap cursor-pointer"
+                >
+                  <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Delivered</span>
+                </button>
+              )}
+              <button
+                onClick={() => handleConvertToInvoice(d)}
+                title="Create Tax Invoice from Delivery Note"
+                className="inline-flex items-center gap-0.5 px-2 py-1 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold shadow-xs transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <ArrowRight className="size-3" />
+                <span>Inv</span>
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => handleDelete(d.dnNo || d._id)}
+            title="Delete Delivery Note"
+            className="inline-flex items-center justify-center p-1 text-xs font-medium rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      ),
     },
   ];
 
   return (
     <>
-      {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm ${toast.type === "error" ? "bg-red-500" : "bg-green-500"}`}>{toast.msg}</div>}
+      {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${toast.type === "error" ? "bg-red-500" : "bg-green-500"}`}>{toast.msg}</div>}
       {printDoc && company && <DocumentPrintView doc={printDoc} type="Delivery Note" company={company} onClose={() => setPrintDoc(null)} />}
 
       {/* Post-Delivery Prompt to Generate Invoice */}
       {postDeliveryModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border text-center animate-in fade-in zoom-in duration-150">
-            <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl text-center animate-in fade-in zoom-in duration-150">
+            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3 border border-emerald-500/20">
               ✓
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Delivery Confirmed!</h3>
-            <p className="text-sm text-gray-600 mb-5">
-              <strong>{postDeliveryModal.dnNo}</strong> has been marked as Delivered to{" "}
-              <strong>{postDeliveryModal.customer?.name}</strong>.
+            <h3 className="text-base sm:text-lg font-bold text-foreground mb-1">Delivery Confirmed!</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+              <strong className="text-foreground">{postDeliveryModal.dnNo}</strong> has been marked as Delivered to{" "}
+              <strong className="text-foreground">{postDeliveryModal.customer?.name}</strong>.
             </p>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => {
                   const d = postDeliveryModal;
                   setPostDeliveryModal(null);
                   handleConvertToInvoice(d);
                 }}
-                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 🧾 Convert to Tax Invoice Now
               </button>
               <button
                 onClick={() => setPostDeliveryModal(null)}
-                className="w-full py-2 px-4 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                className="w-full py-2 px-4 border border-border text-foreground rounded-xl text-xs sm:text-sm font-medium hover:bg-muted transition-colors"
               >
                 Keep as Delivered
               </button>
@@ -225,77 +429,77 @@ export default function DeliveriesPage() {
 
       {/* Mark Delivered Modal */}
       {deliverModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl">
-            <h3 className="font-bold text-lg mb-2">Mark as Delivered</h3>
-            <p className="text-sm text-gray-500 mb-4">{deliverModal.dnNo} — {deliverModal.customer?.name}</p>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 w-[94vw] max-w-sm shadow-2xl">
+            <h3 className="font-bold text-base sm:text-lg mb-1 text-foreground">Mark as Delivered</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4 truncate">{deliverModal.dnNo} — {deliverModal.customer?.name}</p>
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Received By</label>
-              <input className="w-full border rounded-lg px-3 py-2 text-sm" value={receivedBy} onChange={e => setReceivedBy(e.target.value)} placeholder="Name of receiver" autoFocus />
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Received By</label>
+              <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={receivedBy} onChange={e => setReceivedBy(e.target.value)} placeholder="Name of receiver" autoFocus />
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setDeliverModal(null)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-              <button onClick={handleMarkDelivered} className="flex-1 bg-green-600 text-white rounded-lg py-2 text-sm font-medium">Confirm</button>
+            <div className="flex gap-2 sm:gap-3">
+              <button onClick={() => setDeliverModal(null)} className="flex-1 border border-border rounded-lg py-2 text-xs sm:text-sm hover:bg-muted text-foreground">Cancel</button>
+              <button onClick={handleMarkDelivered} className="flex-1 bg-emerald-600 text-white rounded-lg py-2 text-xs sm:text-sm font-semibold hover:bg-emerald-700 shadow-xs">Confirm</button>
             </div>
           </div>
         </div>
       )}
 
       {showForm && (
-        <div className="fixed inset-0 z-40 bg-black/50 overflow-y-auto py-6">
-          <div className="mx-auto max-w-4xl bg-white rounded-2xl shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-bold">{editingId ? "Edit Delivery Note" : "New Delivery Note"}</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+        <div className="fixed inset-0 z-40 bg-black/50 overflow-y-auto p-2 sm:p-4 py-4 sm:py-6">
+          <div className="mx-auto max-w-4xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-muted/30">
+              <h2 className="text-base sm:text-lg font-bold text-foreground">{editingId ? "Edit Delivery Note" : "New Delivery Note"}</h2>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground text-xl">✕</button>
             </div>
-            <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Sales Order Ref *</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.soRef} onChange={e => setForm(f => ({ ...f, soRef: e.target.value }))} placeholder="SO-2026-001" />
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Sales Order Ref *</label>
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono" value={form.soRef} onChange={e => setForm(f => ({ ...f, soRef: e.target.value }))} placeholder="SO-2026-001" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Customer *</label>
-                  <select className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none bg-white" onChange={e => handleCustomerSelect(e.target.value)} defaultValue="">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Customer *</label>
+                  <select className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none bg-background text-foreground" onChange={e => handleCustomerSelect(e.target.value)} defaultValue="">
                     <option value="">{customers.length > 0 ? "Select customer…" : "No customers yet -- add one in Customers first"}</option>
                     {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Transporter</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.transporter || ""} onChange={e => setForm(f => ({ ...f, transporter: e.target.value }))} placeholder="Transport company" />
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Transporter</label>
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={form.transporter || ""} onChange={e => setForm(f => ({ ...f, transporter: e.target.value }))} placeholder="Transport company" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Vehicle No.</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.vehicleNumber || ""} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value }))} placeholder="MH12AB1234" />
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Vehicle No.</label>
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono uppercase" value={form.vehicleNumber || ""} onChange={e => setForm(f => ({ ...f, vehicleNumber: e.target.value }))} placeholder="MH12AB1234" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">LR Number</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.lrNumber || ""} onChange={e => setForm(f => ({ ...f, lrNumber: e.target.value }))} placeholder="Lorry Receipt No." />
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">LR Number</label>
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono" value={form.lrNumber || ""} onChange={e => setForm(f => ({ ...f, lrNumber: e.target.value }))} placeholder="Lorry Receipt No." />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
-                  <select className="w-full border rounded-lg px-3 py-2 text-sm bg-white" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Status</label>
+                  <select className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                     {["Prepared", "Dispatched", "In Transit", "Delivered", "Returned", "Partial"].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">Delivery Address</label>
-                  <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} value={form.deliveryAddress || ""} onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))} />
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Delivery Address</label>
+                  <textarea className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm" rows={2} value={form.deliveryAddress || ""} onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-2">Items (with Serial Numbers)</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">Items (with Serial Numbers)</label>
                 <LineItemsEditor items={form.items} isDelivery={true} onChange={items => setForm(f => ({ ...f, items }))} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
-                <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={2} value={form.notes || ""} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">Notes</label>
+                <textarea className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm" rows={2} value={form.notes || ""} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-2xl">
-              <button onClick={() => setShowForm(false)} className="px-5 py-2 text-sm border rounded-lg hover:bg-gray-100">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="px-6 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium disabled:opacity-60">
+            <div className="flex justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/20">
+              <button onClick={() => setShowForm(false)} className="px-4 sm:px-5 py-2 text-xs sm:text-sm border border-border rounded-lg hover:bg-muted text-foreground">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="px-5 sm:px-6 py-2 text-xs sm:text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold shadow-xs disabled:opacity-60">
                 {saving ? "Saving…" : editingId ? "Update DN" : "Create Delivery Note"}
               </button>
             </div>
@@ -303,18 +507,40 @@ export default function DeliveriesPage() {
         </div>
       )}
 
-      <PageHeader breadcrumb="Sales / Delivery Notes" title="Delivery Notes" subtitle="Material dispatch with serial numbers, transport details and delivery confirmation" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+      <PageHeader
+        breadcrumb="Sales / Delivery Notes"
+        title="Delivery Notes"
+        subtitle="Material dispatch with serial numbers, transport details and delivery confirmation"
+        actions={
+          <button
+            onClick={() => {
+              setForm(emptyForm);
+              setEditingId(null);
+              setShowForm(true);
+            }}
+            className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-all w-full sm:w-auto"
+          >
+            + New Delivery Note
+          </button>
+        }
+      />
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-5">
         <Kpi label="Total Notes" value={notes.length} />
         <Kpi label="Dispatched" value={dispatched} tone="warning" />
         <Kpi label="In Transit" value={inTransit} tone="warning" />
         <Kpi label="Delivered" value={delivered} tone="success" />
       </div>
-      <div className="flex justify-end mb-4">
-        <button onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }} className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-all">+ New Delivery Note</button>
-      </div>
-      {loading ? <div className="flex items-center justify-center h-40"><div className="animate-spin w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full" /></div> : (
-        <DataTable rows={notes} columns={columns} searchKeys={["dnNo", "soRef", "customer.name", "status", "lrNumber", "invoiceRef"]} />
+      {loading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin w-8 h-8 border-4 border-amber-200 border-t-amber-600 rounded-full" />
+        </div>
+      ) : (
+        <DataTable
+          rows={notes}
+          columns={columns}
+          mobileCard={renderMobileCard}
+          searchKeys={["dnNo", "soRef", "customer.name", "status", "lrNumber", "invoiceRef"]}
+        />
       )}
     </>
   );

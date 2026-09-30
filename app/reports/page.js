@@ -50,7 +50,7 @@ export default function ReportsPage() {
         subtitle="Product and quotation-conversion analytics computed live below; the other report categories already have real, dedicated pages — linked, not duplicated."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <Kpi label="Products tracked" value={productRows.length} />
         <Kpi label="Quoted value" value={inrShort(totalQuotedValue)} />
         <Kpi label="Ordered value" value={inrShort(totalOrderedValue)} tone="success" />
@@ -64,13 +64,13 @@ export default function ReportsPage() {
       ) : error ? (
         <p className="mt-5 text-sm text-destructive">{error}</p>
       ) : (
-        <Tabs defaultValue="products" className="mt-5">
-          <TabsList>
+        <Tabs defaultValue="products" className="mt-4 sm:mt-5">
+          <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
             <TabsTrigger value="products">Product-wise</TabsTrigger>
             <TabsTrigger value="quotations">Quotation Conversion</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="products" className="mt-4">
+          <TabsContent value="products" className="mt-3 sm:mt-4">
             <DataTable
               rows={productRows}
               columns={[
@@ -92,10 +92,45 @@ export default function ReportsPage() {
               ]}
               searchKeys={["name"]}
               emptyLabel="No quotation/order/invoice line items yet."
+              mobileCard={(r) => (
+                <div className="p-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-semibold text-xs text-foreground leading-snug flex-1">
+                      {r.name}
+                    </h4>
+                    <span className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold shrink-0 ${
+                      r.conversionRate >= 100 
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" 
+                        : r.conversionRate >= 50 
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" 
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      {r.conversionRate}% Conv
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 mt-2.5 pt-2 border-t border-border/50 text-[11px]">
+                    <div className="bg-muted/40 rounded p-1.5 border border-border/40">
+                      <p className="text-[9px] font-semibold uppercase text-muted-foreground">Quoted</p>
+                      <p className="font-bold text-foreground mt-0.5 text-xs">{r.quotedQty} pcs</p>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{inrShort(r.quotedValue)}</p>
+                    </div>
+                    <div className="bg-muted/40 rounded p-1.5 border border-border/40">
+                      <p className="text-[9px] font-semibold uppercase text-muted-foreground">Ordered</p>
+                      <p className="font-bold text-foreground mt-0.5 text-xs">{r.orderedQty} pcs</p>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{inrShort(r.orderedValue)}</p>
+                    </div>
+                    <div className="bg-muted/40 rounded p-1.5 border border-border/40">
+                      <p className="text-[9px] font-semibold uppercase text-muted-foreground">Invoiced</p>
+                      <p className="font-bold text-foreground mt-0.5 text-xs">{r.invoicedQty} pcs</p>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{inrShort(r.invoicedValue)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             />
           </TabsContent>
 
-          <TabsContent value="quotations" className="mt-4 space-y-4">
+          <TabsContent value="quotations" className="mt-3 sm:mt-4 space-y-4">
             <Section title="By salesperson">
               <DataTable
                 rows={quotationData.summary}
@@ -109,6 +144,26 @@ export default function ReportsPage() {
                 ]}
                 searchKeys={["salesperson"]}
                 emptyLabel="No quotations yet."
+                mobileCard={(r) => (
+                  <div className="p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-xs text-foreground">{r.salesperson}</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
+                        {r.conversionRate}% Rate
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-border/50 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground text-[10px]">Quotes / Converted</span>
+                        <p className="font-semibold text-foreground text-xs">{r.quotations} / <span className="text-emerald-600 dark:text-emerald-400 font-bold">{r.converted}</span></p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground text-[10px]">Quoted / Converted</span>
+                        <p className="font-semibold text-foreground text-xs">{inrShort(r.quotedValue)} / <span className="text-emerald-600 dark:text-emerald-400 font-bold">{inrShort(r.convertedValue)}</span></p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               />
             </Section>
             <Section title="Every quotation">
@@ -141,22 +196,48 @@ export default function ReportsPage() {
                 ]}
                 searchKeys={["quotationNo", "customerName", "salesperson"]}
                 emptyLabel="No quotations yet."
+                mobileCard={(r) => (
+                  <div className="p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link href={`/quotations/${r.quotationNo}`} className="font-bold text-xs text-primary hover:underline">
+                        {r.quotationNo}
+                      </Link>
+                      <StatusBadge value={r.status} />
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-xs">
+                      <span className="font-medium text-foreground">{r.customerName}</span>
+                      <span className="font-bold text-foreground">{inr(r.grandTotal)}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/40">
+                      <span>Rep: {r.salesperson}</span>
+                      <span>
+                        {r.converted ? (
+                          <Link href={`/orders/${r.convertedToSalesOrder}`} className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline">
+                            SO: {r.convertedToSalesOrder}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">Not converted</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
               />
             </Section>
           </TabsContent>
         </Tabs>
       )}
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 sm:mt-5 grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {LINKED_REPORTS.map((r) => (
           <Link key={r.name} href={r.href} className="block">
             <div className="flex items-center justify-between rounded-md border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/40">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{r.group}</p>
-                <p className="font-semibold">{r.name}</p>
+                <p className="font-semibold text-sm">{r.name}</p>
                 <p className="text-xs text-muted-foreground">{r.desc}</p>
               </div>
-              <Button size="sm" variant="outline">Open</Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs">Open</Button>
             </div>
           </Link>
         ))}

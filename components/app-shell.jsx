@@ -40,10 +40,18 @@ import {
   Building2,
   Check,
   CheckCheck,
-  KeyRound
+  KeyRound,
+  Sparkles,
+  ChevronDown,
+  ChevronRight,
+  ChevronsUpDown,
+  SlidersHorizontal,
+  Layers,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -120,6 +128,17 @@ const MODULE_ICONS = {
   deployment: Server,
 };
 
+const GROUP_META = {
+  "Overview": { icon: LayoutDashboard, short: "Overview" },
+  "CRM": { icon: Sparkles, short: "CRM" },
+  "Sales": { icon: Receipt, short: "Sales" },
+  "Products & Inventory": { icon: Boxes, short: "Inventory" },
+  "Projects & Service": { icon: FolderKanban, short: "Projects" },
+  "Finance": { icon: IndianRupee, short: "Finance" },
+  "People": { icon: Users2, short: "People" },
+  "Administration": { icon: Lock, short: "Admin" },
+};
+
 const NAV = SIDEBAR_MODULES.map((group) => ({
   group: group.group,
   items: group.items.map((item) => ({ ...item, icon: MODULE_ICONS[item.key] })),
@@ -163,28 +182,242 @@ const getFilteredNav = (currentUser, customPerms) => {
     .filter((group) => group.items.length > 0);
 };
 
-function SidebarNav({ onNavigate, user, permissions }) {
+function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
   const pathname = usePathname();
   const filteredNav = useMemo(() => getFilteredNav(user, permissions), [user, permissions]);
-  return /* @__PURE__ */ React.createElement("nav", { className: "flex-1 overflow-y-auto no-scrollbar px-2 py-3" }, filteredNav.map((g) => /* @__PURE__ */ React.createElement("div", { key: g.group, className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { className: "px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-foreground/50" }, g.group), /* @__PURE__ */ React.createElement("ul", { className: "space-y-0.5" }, g.items.map((it) => {
-    const active = it.href === "/" ? pathname === "/" : pathname.startsWith(it.href);
-    return /* @__PURE__ */ React.createElement("li", { key: it.href }, /* @__PURE__ */ React.createElement(
-      Link,
-      {
-        href: it.href,
-        onClick: onNavigate,
-        className: cn(
-          "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-          active ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        )
-      },
-      /* @__PURE__ */ React.createElement(it.icon, { className: "size-4 shrink-0" }),
-      /* @__PURE__ */ React.createElement("span", { className: "truncate" }, it.label)
-    ));
-  })))));
+  const [filterQuery, setFilterQuery] = useState("");
+
+  // Determine which category group contains the current active route
+  const activeGroup = useMemo(() => {
+    for (const group of filteredNav) {
+      const hasActive = group.items.some((it) =>
+        it.href === "/" ? pathname === "/" : pathname.startsWith(it.href)
+      );
+      if (hasActive) return group.group;
+    }
+    return null;
+  }, [filteredNav, pathname]);
+
+  // Collapsible category dropdowns: closed by default
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
+
+  const expandAll = () => {
+    const allOpen = {};
+    filteredNav.forEach((g) => {
+      allOpen[g.group] = true;
+    });
+    setExpandedGroups(allOpen);
+  };
+
+  const collapseAll = () => {
+    setExpandedGroups({});
+  };
+
+  // Filter navigation by search query
+  const displayedNav = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return filteredNav;
+
+    return filteredNav
+      .map((g) => {
+        const matchingItems = g.items.filter(
+          (it) => it.label.toLowerCase().includes(q) || it.href.toLowerCase().includes(q)
+        );
+        return {
+          ...g,
+          items: matchingItems,
+        };
+      })
+      .filter((g) => g.items.length > 0);
+  }, [filteredNav, filterQuery]);
+
+  const totalFilteredCount = useMemo(() => {
+    return displayedNav.reduce((acc, g) => acc + g.items.length, 0);
+  }, [displayedNav]);
+
+  const allOpen = useMemo(() => {
+    return filteredNav.length > 0 && filteredNav.every((g) => expandedGroups[g.group]);
+  }, [filteredNav, expandedGroups]);
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden min-h-0">
+      {/* Search Bar (Top tabs removed) */}
+      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar p-2.5">
+        <div className="relative flex items-center">
+          <Search className="absolute left-2.5 size-3.5 text-sidebar-foreground/40 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Filter menu items…"
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="w-full h-8.5 pl-8 pr-7 text-xs rounded-lg bg-white/10 border border-white/10 text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:outline-none focus:ring-1 focus:ring-accent/80 focus:bg-white/15 transition-all"
+          />
+          {filterQuery && (
+            <button
+              type="button"
+              onClick={() => setFilterQuery("")}
+              className="absolute right-2 text-sidebar-foreground/60 hover:text-sidebar-foreground p-0.5 cursor-pointer"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Category Dropdowns List */}
+      <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-2.5 space-y-1.5">
+        {displayedNav.length === 0 ? (
+          <div className="py-8 px-4 text-center">
+            <p className="text-xs text-sidebar-foreground/60">No modules matching &ldquo;{filterQuery}&rdquo;</p>
+            <button
+              type="button"
+              onClick={() => setFilterQuery("")}
+              className="mt-2 text-xs text-accent font-semibold hover:underline cursor-pointer"
+            >
+              Clear search
+            </button>
+          </div>
+        ) : (
+          displayedNav.map((g) => {
+            const meta = GROUP_META[g.group] || { short: g.group, icon: LayoutDashboard };
+            const GroupIcon = meta.icon || LayoutDashboard;
+            // If searching, auto-expand matching categories; otherwise follow expandedGroups (closed by default)
+            const isOpen = filterQuery.trim() !== "" || Boolean(expandedGroups[g.group]);
+            const hasActiveItem = g.group === activeGroup;
+
+            return (
+              <div
+                key={g.group}
+                className={cn(
+                  "rounded-xl transition-all border border-transparent",
+                  hasActiveItem && "bg-white/[0.04] border-white/5",
+                  isOpen && "bg-white/[0.02]"
+                )}
+              >
+                {/* Category Dropdown Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(g.group)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-white/5 active:bg-white/10 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GroupIcon
+                      className={cn(
+                        "size-4 shrink-0 transition-colors",
+                        hasActiveItem ? "text-accent" : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "text-xs font-bold uppercase tracking-wider truncate",
+                        hasActiveItem ? "text-sidebar-foreground" : "text-sidebar-foreground/75 group-hover:text-sidebar-foreground"
+                      )}
+                    >
+                      {g.group}
+                    </span>
+                    {hasActiveItem && (
+                      <span className="size-1.5 rounded-full bg-accent shrink-0 shadow-xs shadow-accent/50" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white/10 text-sidebar-foreground/60">
+                      {g.items.length}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 text-sidebar-foreground/50 transition-transform duration-200",
+                        isOpen ? "rotate-180" : "rotate-0"
+                      )}
+                    />
+                  </div>
+                </button>
+
+                {/* Sub items dropdown */}
+                {isOpen && (
+                  <ul className="mt-1 space-y-0.5 pl-2 pr-1 pb-1.5 animate-in fade-in-50 duration-150 border-l border-white/10 ml-3.5 my-1">
+                    {g.items.map((it) => {
+                      const active = it.href === "/" ? pathname === "/" : pathname.startsWith(it.href);
+                      return (
+                        <li key={it.href}>
+                          <Link
+                            href={it.href}
+                            onClick={onNavigate}
+                            className={cn(
+                              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-all cursor-pointer min-h-[38px]",
+                              active
+                                ? "bg-accent text-accent-foreground font-bold shadow-sm ring-1 ring-accent/30"
+                                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.99]"
+                            )}
+                          >
+                            <it.icon
+                              className={cn(
+                                "size-4 shrink-0 transition-colors",
+                                active ? "text-accent-foreground" : "text-sidebar-foreground/60"
+                              )}
+                            />
+                            <span className="truncate flex-1">{it.label}</span>
+                            {active && (
+                              <span className="size-1.5 rounded-full bg-accent-foreground shrink-0 shadow-xs" />
+                            )}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            );
+          })
+        )}
+      </nav>
+
+      {/* Footer Controls */}
+      <div className="shrink-0 border-t border-sidebar-border/60 bg-sidebar px-3 py-2 flex items-center justify-between text-[11px] text-sidebar-foreground/60">
+        <span className="truncate font-medium">
+          {totalFilteredCount} module{totalFilteredCount !== 1 ? "s" : ""}
+        </span>
+        {!filterQuery && (
+          <button
+            type="button"
+            onClick={allOpen ? collapseAll : expandAll}
+            className="flex items-center gap-1 font-semibold text-sidebar-foreground/80 hover:text-accent transition-colors cursor-pointer"
+          >
+            <ChevronsUpDown className="size-3" />
+            <span>{allOpen ? "Collapse All" : "Expand All"}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
-function Brand() {
-  return null;
+
+function Brand({ onNavigate }) {
+  return (
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className="flex h-14 items-center gap-3 px-4 pr-12 lg:pr-4 border-b border-sidebar-border/80 bg-sidebar shrink-0 transition-opacity hover:opacity-95"
+    >
+      <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground font-black text-sm shadow-md">
+        C
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-sm text-sidebar-foreground tracking-tight">CONTECH</span>
+          <span className="rounded bg-accent/20 px-1 py-0.2 text-[9px] font-extrabold text-accent">CRM</span>
+        </div>
+        <p className="text-[10px] text-sidebar-foreground/60 truncate font-medium">Enterprise Suite</p>
+      </div>
+    </Link>
+  );
 }
 
 const AUTH_STANDALONE_ROUTES = ['/login', '/reset-password', '/forgot-password'];
@@ -198,12 +431,31 @@ function AppShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [user, setUser] = useState(null);
   const [sidebarPerms, setSidebarPerms] = useState(null);
   const [liveNotifications, setLiveNotifications] = useState([]);
 
+  // Ensure loading screen is visible smoothly on every full page reload/load
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show immediate visual progress feedback when navigating between routes
+  const prevPathRef = React.useRef(pathname);
+  useEffect(() => {
+    if (prevPathRef.current !== pathname) {
+      prevPathRef.current = pathname;
+      setNavigating(true);
+      const t = setTimeout(() => setNavigating(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
     const u = getUser();
     setUser(u);
     const localPerms = getSidebarPermissions();
@@ -319,30 +571,33 @@ function AppShell({ children }) {
   };
 
   if (!mounted) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-          <span className="text-xs text-gray-500 font-medium">Loading workspace...</span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Loading workspace & enterprise modules..." subtext="Connecting services" />;
   }
 
   if (!user) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-4 text-center p-6 bg-white rounded-2xl shadow-sm border border-gray-200 max-w-sm">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-          <div>
-            <h3 className="text-sm font-bold text-gray-900">Redirecting to Login</h3>
-            <p className="text-xs text-gray-500 mt-1">Please sign in to access the CRM platform.</p>
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950/30 p-4 transition-all animate-in fade-in duration-200">
+        <div className="flex flex-col items-center text-center max-w-sm w-full p-8 rounded-3xl bg-white/85 dark:bg-card/85 backdrop-blur-xl border border-blue-200/70 dark:border-border/60 shadow-xl shadow-blue-500/5 space-y-5">
+          {/* Lock Badge */}
+          <div className="relative size-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/25">
+            <KeyRound className="size-7 text-white" />
           </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              Authentication Required
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Please sign in to access your enterprise dashboard and operational records.
+            </p>
+          </div>
+
           <Link
             href="/login"
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold shadow hover:bg-blue-700 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
           >
-            Go to Login Now →
+            <span>Proceed to Login</span>
+            <span>➔</span>
           </Link>
         </div>
       </div>
@@ -382,63 +637,41 @@ function AppShell({ children }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex overflow-hidden">
+    <div className="flex min-h-screen w-full bg-background relative">
+      {/* Dynamic Route Progress Bar during page navigation */}
+      {navigating && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-indigo-400 to-blue-600 animate-progress shadow-sm" />
+      )}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar lg:flex border-r border-sidebar-border z-30 overflow-hidden">
+        <Brand />
         <SidebarNav user={user} permissions={sidebarPerms} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md">
+        <header className="topbar-gradient sticky top-0 z-30 flex items-center gap-2 px-3 py-2.5 text-primary-foreground shadow-md shrink-0">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/15 lg:hidden">
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 bg-sidebar p-0 text-sidebar-foreground">
+            <SheetContent side="left" className="w-[88vw] max-w-[320px] bg-sidebar p-0 text-sidebar-foreground flex flex-col">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex h-full flex-col overflow-hidden">
-                <SidebarNav onNavigate={() => setMobileOpen(false)} user={user} permissions={sidebarPerms} />
+                <Brand onNavigate={() => setMobileOpen(false)} />
+                <SidebarNav isMobile onNavigate={() => setMobileOpen(false)} user={user} permissions={sidebarPerms} />
               </div>
             </SheetContent>
           </Sheet>
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex h-10 flex-1 items-center gap-2 rounded-md bg-white/12 px-3 text-left text-sm text-white/80 transition-colors hover:bg-white/20"
+            className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md bg-white/12 px-2.5 sm:px-3 text-left text-sm text-white/80 transition-colors hover:bg-white/20"
           >
             <Search className="size-4 shrink-0" />
-            <span className="truncate">Search permitted pages and records…</span>
-            <kbd className="hidden sm:inline-flex ml-auto h-5 items-center gap-1 rounded border border-white/25 bg-white/10 px-1.5 font-mono text-[10px] font-semibold text-white/80">
+            <span className="truncate text-xs sm:text-sm">Search pages & records…</span>
+            <kbd className="hidden md:inline-flex ml-auto h-5 items-center gap-1 rounded border border-white/25 bg-white/10 px-1.5 font-mono text-[10px] font-semibold text-white/80">
               Ctrl+K
             </kbd>
           </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="h-10 gap-1.5 bg-accent font-bold text-accent-foreground hover:bg-accent/90 cursor-pointer shadow-sm">
-                <Plus className="size-4" /> <span className="hidden sm:inline">Quick Action</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 shadow-xl rounded-xl border border-gray-100">
-              <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-1.5">
-                Quick Actions
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="max-h-[380px] overflow-y-auto py-1">
-                {permittedQuickActions.map((action) => {
-                  const Icon = action.icon || Plus;
-                  return (
-                    <DropdownMenuItem
-                      key={action.label}
-                      onSelect={() => router.push(action.href)}
-                      className="cursor-pointer flex items-center gap-2.5 px-3 py-2 text-sm font-medium hover:bg-accent/15 focus:bg-accent/15 transition-colors"
-                    >
-                      <Icon className="size-4 text-blue-600 shrink-0" />
-                      <span className="truncate">{action.label}</span>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-white/15">
@@ -565,6 +798,42 @@ function AppShell({ children }) {
           </DropdownMenu>
         </header>
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      </div>
+
+      {/* Floating Yellow Quick Action Button on Bottom Right */}
+      <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="group relative size-12 sm:size-13 rounded-2xl bg-accent text-accent-foreground font-black flex items-center justify-center shadow-xl shadow-accent/25 ring-4 ring-white/80 dark:ring-slate-900/80 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              title="Quick Actions"
+            >
+              <Plus className="size-6 transition-transform duration-200 group-hover:rotate-90" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-64 shadow-2xl rounded-2xl border border-border p-1.5 mb-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+            <DropdownMenuLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 py-2 flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-accent" /> Quick Actions
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="max-h-[360px] overflow-y-auto py-1">
+              {permittedQuickActions.map((action) => {
+                const Icon = action.icon || Plus;
+                return (
+                  <DropdownMenuItem
+                    key={action.label}
+                    onSelect={() => router.push(action.href)}
+                    className="cursor-pointer flex items-center gap-2.5 px-3 py-2 text-xs sm:text-sm font-medium hover:bg-accent/15 focus:bg-accent/15 transition-colors rounded-xl"
+                  >
+                    <Icon className="size-4 text-blue-600 shrink-0" />
+                    <span className="truncate">{action.label}</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>

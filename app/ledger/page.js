@@ -33,7 +33,7 @@ export default function Page() {
         title="Customer Ledger"
         subtitle="Billed, received and outstanding per customer, computed live from real invoices and recorded payments."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <Kpi label="Customers" value={ledger.length} />
         <Kpi label="Total outstanding" value={inrShort(totalOutstanding)} tone="danger" />
         <Kpi label="Collected" value={inrShort(totalReceived)} tone="success" />

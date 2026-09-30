@@ -5,7 +5,7 @@
 @layer base {
   :root {
     --radius: 0.5rem;
-    --background: 0.976 0.006 240;
+    --background: 0.942 0.014 246;
     --foreground: 0.22 0.03 255;
     --card: 1 0 0;
     --card-foreground: 0.22 0.03 255;
@@ -14,10 +14,10 @@
     --primary: 0.52 0.13 240;
     --primary-foreground: 0.99 0 0;
     --primary-dark: 0.34 0.09 250;
-    --secondary: 0.94 0.014 238;
+    --secondary: 0.915 0.02 242;
     --secondary-foreground: 0.32 0.07 250;
-    --muted: 0.955 0.008 240;
-    --muted-foreground: 0.52 0.025 250;
+    --muted: 0.92 0.018 245;
+    --muted-foreground: 0.50 0.025 250;
     --accent: 0.845 0.16 90;
     --accent-foreground: 0.25 0.04 255;
     --destructive: 0.55 0.2 25;
@@ -28,8 +28,8 @@
     --warning-foreground: 0.22 0.03 255;
     --info: 0.52 0.13 240;
     --info-foreground: 0.99 0 0;
-    --border: 0.9 0.012 240;
-    --input: 0.9 0.012 240;
+    --border: 0.875 0.018 245;
+    --input: 0.875 0.018 245;
     --ring: 0.52 0.13 240;
     --chart-1: 0.52 0.13 240;
     --chart-2: 0.845 0.16 90;
@@ -45,8 +45,8 @@
     --sidebar-border: 0.34 0.05 252;
     --sidebar-ring: 0.845 0.16 90;
     
-    --shadow-panel: 0 1px 2px oklch(0.25 0.06 250 / 0.06), 0 8px 24px -16px oklch(0.25 0.06 250 / 0.25);
-    --shadow-raised: 0 2px 4px oklch(0.25 0.06 250 / 0.08), 0 16px 32px -18px oklch(0.25 0.06 250 / 0.3);
+    --shadow-panel: 0 1px 3px oklch(0.25 0.06 250 / 0.07), 0 8px 24px -16px oklch(0.25 0.06 250 / 0.18);
+    --shadow-raised: 0 2px 6px oklch(0.25 0.06 250 / 0.09), 0 16px 32px -18px oklch(0.25 0.06 250 / 0.24);
   }
 
   .dark {
@@ -99,6 +99,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  body[data-scroll-locked] {
+    margin-right: 0px !important;
+  }
+
   h1,
   h2,
   h3,
@@ -146,4 +150,15 @@ aside nav::-webkit-scrollbar,
   width: 0px;
   height: 0px;
 }
+
+@keyframes progressIndeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(20%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-progress {
+  animation: progressIndeterminate 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 

@@ -30,7 +30,7 @@ export default function Page() {
         title="GST"
         subtitle="Real invoice data in a GST-compatible structure — GSTIN, taxable value, CGST, SGST, IGST, invoice number and date — pulled live from Sales Invoices."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <Kpi label="Invoices" value={invoices.length} />
         <Kpi label="Taxable value" value={inrShort(taxableValue)} />
         <Kpi label="CGST + SGST" value={inrShort(cgstSgst)} tone="accent" />

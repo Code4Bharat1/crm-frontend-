@@ -9,6 +9,7 @@ import { DataTable, Kpi, PageHeader, StatusBadge, Field } from "@/components/crm
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { inrShort } from "@/lib/crm-data";
+import { FilePlus2, User, Pencil, Trash2 } from "lucide-react";
 
 const emptyForm = {
   name: "",
@@ -171,19 +172,20 @@ export default function CustomersPage() {
   const columns = [
     {
       header: "Customer",
+      className: "max-w-[200px]",
       cell: (c) => (
-        <div>
-          <Link href={`/customers/${c.id || c._id}`} className="font-bold text-primary hover:underline text-sm">
+        <div className="min-w-0">
+          <Link href={`/customers/${c.id || c._id}`} className="font-bold text-primary hover:underline text-sm block truncate">
             {c.name}
           </Link>
-          <div className="text-xs text-muted-foreground flex gap-2 mt-0.5">
+          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1 mt-0.5">
             <span className="font-mono font-medium text-blue-600">{c.id}</span>
             <span>·</span>
             <span>{c.industry || c.type}</span>
             {c.gstNumber && (
               <>
-                <span>·</span>
-                <span className="font-mono text-gray-400">{c.gstNumber}</span>
+                <span className="hidden xl:inline">·</span>
+                <span className="font-mono text-gray-400 hidden xl:inline">{c.gstNumber}</span>
               </>
             )}
           </div>
@@ -192,44 +194,69 @@ export default function CustomersPage() {
     },
     {
       header: "Contact Person",
+      className: "max-w-[160px]",
       cell: (c) => (
-        <div className="text-xs">
-          <div className="font-medium text-gray-800">{c.contactPerson?.name || "—"}</div>
-          {c.contactPerson?.phone && <div className="text-gray-500">📞 {c.contactPerson.phone}</div>}
-          {c.contactPerson?.email && <div className="text-gray-400">✉ {c.contactPerson.email}</div>}
+        <div className="text-xs space-y-0.5 min-w-0">
+          <div className="font-medium text-gray-800 dark:text-gray-200 truncate">{c.contactPerson?.name || "—"}</div>
+          {c.contactPerson?.phone && <div className="text-gray-500 font-mono text-[11px] truncate">📞 {c.contactPerson.phone}</div>}
+          {c.contactPerson?.email && <div className="text-gray-400 text-[11px] truncate">✉ {c.contactPerson.email}</div>}
         </div>
       ),
     },
-    { header: "Area / City", cell: (c) => c.area || c.address?.city || "—" },
-    { header: "Type", cell: (c) => <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 rounded-md">{c.type}</span> },
-    { header: "Status", cell: (c) => <StatusBadge value={c.status} /> },
-    { header: "Total Sales", cell: (c) => <span className="font-semibold">{inrShort(c.totalRevenue)}</span> },
-    { header: "Outstanding", cell: (c) => <span className={c.outstanding > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}>{inrShort(c.outstanding)}</span> },
+    { header: "Area / City", className: "whitespace-nowrap text-xs", cell: (c) => c.area || c.address?.city || "—" },
+    { header: "Type", className: "whitespace-nowrap text-center", cell: (c) => <span className="text-xs font-medium px-2 py-0.5 bg-muted rounded-md">{c.type}</span> },
+    { header: "Status", className: "whitespace-nowrap text-center", cell: (c) => <StatusBadge value={c.status} /> },
+    { header: "Total Sales", className: "whitespace-nowrap text-right font-medium", cell: (c) => <span className="font-semibold">{inrShort(c.totalRevenue)}</span> },
+    { header: "Outstanding", className: "whitespace-nowrap text-right", cell: (c) => <span className={c.outstanding > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}>{inrShort(c.outstanding)}</span> },
     {
       header: "Actions",
+      className: "text-right whitespace-nowrap",
       cell: (c) => (
-        <div className="flex gap-1.5 flex-wrap">
-          <Link
-            href={`/quotations?customerId=${c._id || c.id}&customerName=${encodeURIComponent(c.name)}`}
-            className="px-2.5 py-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors inline-flex items-center gap-1 shadow-sm"
+        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all shadow-2xs hover:shadow-xs cursor-pointer shrink-0 gap-1"
+            asChild
+            title="Create new quotation"
           >
-            + Quotation
-          </Link>
-          <button
-            onClick={() => openEdit(c)}
-            className="px-2 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-          >
-            Edit
-          </button>
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" asChild>
-            <Link href={`/customers/${c.id || c._id}`}>Profile</Link>
+            <Link href={`/quotations?customerId=${c._id || c.id}&customerName=${encodeURIComponent(c.name)}`}>
+              <FilePlus2 className="size-3.5" />
+              <span className="hidden sm:inline">Quotation</span>
+            </Link>
           </Button>
-          <button
-            onClick={() => handleDelete(c.id || c._id, c.name)}
-            className="px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-7 w-7 border-border hover:bg-muted cursor-pointer shrink-0 shadow-2xs"
+            asChild
+            title="View Customer Profile"
           >
-            Del
-          </button>
+            <Link href={`/customers/${c.id || c._id}`}>
+              <User className="size-3.5 text-muted-foreground hover:text-foreground" />
+            </Link>
+          </Button>
+
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => openEdit(c)}
+            className="h-7 w-7 border-border hover:bg-muted cursor-pointer shrink-0 shadow-2xs"
+            title="Edit Customer"
+          >
+            <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+          </Button>
+
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => handleDelete(c.id || c._id, c.name)}
+            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
+            title="Delete Customer"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
         </div>
       ),
     },
@@ -286,16 +313,16 @@ export default function CustomersPage() {
       {showModal && (
         <div className="fixed inset-0 z-40 bg-black/60 overflow-y-auto py-6 flex items-start justify-center px-3">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border">
-            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <div className="flex items-center justify-between px-6 py-4 text-gray-800">
               <div>
                 <h2 className="text-lg font-bold">{editingId ? "Edit Customer Record" : "Add New Customer"}</h2>
-                <p className="text-xs text-blue-100">
+                <p className="text-xs text-gray-600">
                   {editingId ? "Update details in MongoDB" : "Register a customer to immediately generate Quotations & Orders"}
                 </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-base transition-colors"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-800 text-base transition-colors"
               >
                 ✕
               </button>
@@ -312,16 +339,15 @@ export default function CustomersPage() {
                       type="text"
                       required
                       placeholder="e.g. Bharat Forge Ltd / Acme Automation"
-                      className="w-full border rounded-lg px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all font-medium"
                       value={form.name}
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                      autoFocus
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Customer Type</label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.type}
                       onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
                     >
@@ -333,7 +359,7 @@ export default function CustomersPage() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Industry Sector</label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.industry}
                       onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))}
                     >
@@ -347,7 +373,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="27AABCN1234F1Z5"
-                      className="w-full border rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm font-mono uppercase text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.gstNumber}
                       onChange={(e) => setForm((f) => ({ ...f, gstNumber: e.target.value.toUpperCase() }))}
                     />
@@ -357,7 +383,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="AABCN1234F"
-                      className="w-full border rounded-lg px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm font-mono uppercase text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.panNumber}
                       onChange={(e) => setForm((f) => ({ ...f, panNumber: e.target.value.toUpperCase() }))}
                     />
@@ -365,7 +391,7 @@ export default function CustomersPage() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Status</label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.status}
                       onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
                     >
@@ -377,7 +403,7 @@ export default function CustomersPage() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned Salesperson</label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.salesPerson}
                       onChange={(e) => setForm((f) => ({ ...f, salesPerson: e.target.value }))}
                     >
@@ -395,15 +421,15 @@ export default function CustomersPage() {
               </div>
 
               {/* 2. Primary Contact */}
-              <div className="border-t pt-4">
-                <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3">2. Primary Contact Person</div>
+              <div className="border-t border-gray-100 pt-4">
+                <div className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">2. Primary Contact Person</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Contact Name</label>
                     <input
                       type="text"
                       placeholder="e.g. Rajesh Patil"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.contactPerson.name}
                       onChange={(e) => setContact("name", e.target.value)}
                     />
@@ -413,7 +439,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="e.g. Purchase Manager"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.contactPerson.designation}
                       onChange={(e) => setContact("designation", e.target.value)}
                     />
@@ -423,7 +449,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="+91 98765 43210"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.contactPerson.phone}
                       onChange={(e) => setContact("phone", e.target.value)}
                     />
@@ -433,7 +459,7 @@ export default function CustomersPage() {
                     <input
                       type="email"
                       placeholder="rajesh@company.com"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.contactPerson.email}
                       onChange={(e) => setContact("email", e.target.value)}
                     />
@@ -442,15 +468,15 @@ export default function CustomersPage() {
               </div>
 
               {/* 3. Address & Location */}
-              <div className="border-t pt-4">
-                <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3">3. Billing & Works Address</div>
+              <div className="border-t border-gray-100 pt-4">
+                <div className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">3. Billing & Works Address</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Street / Factory Address</label>
                     <input
                       type="text"
                       placeholder="Plot No. G-12, Sector 10, MIDC Industrial Area"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.address.street}
                       onChange={(e) => setAddr("street", e.target.value)}
                     />
@@ -460,7 +486,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="e.g. Chakan MIDC / Bhosari"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.area}
                       onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
                     />
@@ -470,7 +496,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="Pune"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.address.city}
                       onChange={(e) => setAddr("city", e.target.value)}
                     />
@@ -480,7 +506,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="Maharashtra"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.address.state}
                       onChange={(e) => setAddr("state", e.target.value)}
                     />
@@ -490,7 +516,7 @@ export default function CustomersPage() {
                     <input
                       type="text"
                       placeholder="410501"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.address.pinCode}
                       onChange={(e) => setAddr("pinCode", e.target.value)}
                     />
@@ -499,13 +525,13 @@ export default function CustomersPage() {
               </div>
 
               {/* 4. Commercial Terms */}
-              <div className="border-t pt-4">
-                <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3">4. Commercial Terms</div>
+              <div className="border-t border-gray-100 pt-4">
+                <div className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-3">4. Commercial Terms</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Default Payment Terms</label>
                     <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.paymentTerms}
                       onChange={(e) => setForm((f) => ({ ...f, paymentTerms: e.target.value }))}
                     >
@@ -519,7 +545,7 @@ export default function CustomersPage() {
                     <input
                       type="number"
                       placeholder="0"
-                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2 text-sm text-gray-800 placeholder:text-gray-400 outline-none hover:border-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
                       value={form.creditLimit}
                       onChange={(e) => setForm((f) => ({ ...f, creditLimit: Number(e.target.value) }))}
                     />
@@ -527,18 +553,18 @@ export default function CustomersPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-5 py-2.5 text-sm font-medium border rounded-xl hover:bg-gray-100 transition-colors"
+                  className="px-5 py-2.5 text-sm font-semibold border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2.5 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all disabled:opacity-60 flex items-center gap-2"
+                  className="px-6 py-2.5 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all disabled:opacity-60 flex items-center gap-2 cursor-pointer"
                 >
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Create Customer"}
                 </button>
@@ -564,7 +590,7 @@ export default function CustomersPage() {
       />
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
         <Kpi label="Total Customers" value={customers.length} sub="Active master records" />
         <Kpi label="Active Customers" value={activeCount} tone="success" />
         <Kpi label="Total Outstanding" value={inrShort(totalOutstanding)} tone="danger" />

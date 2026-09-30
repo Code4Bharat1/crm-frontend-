@@ -40,6 +40,8 @@ import {
 import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
 import { getEmployees, createEmployee } from "@/services/employeeService";
 import { SIDEBAR_MODULES, ALL_SIDEBAR_ITEMS, isRoleMatch } from "@/lib/sidebarModules";
+import { isValidPhoneNumber, sanitizePhoneInput } from "@/lib/validators";
+import { cn } from "@/lib/utils";
 
 export default function Page() {
   // Roles list - blank by default
@@ -97,6 +99,10 @@ export default function Page() {
     e.preventDefault();
     if (!employeeFormData.role) {
       toast.error("Please select a role for the employee");
+      return;
+    }
+    if (!employeeFormData.phone?.trim() || employeeFormData.phone.length !== 10 || !isValidPhoneNumber(employeeFormData.phone)) {
+      toast.error("Please enter a valid 10-digit mobile number (e.g. 9876543210)");
       return;
     }
     setIsSubmittingEmployee(true);
@@ -355,14 +361,15 @@ export default function Page() {
       />
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Kpi label="Users" value={userCount} sub="Real active accounts" />
-        <Kpi label="Roles" value={rolesCount} sub="Table blank by default" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
+        <Kpi label="Users" value={userCount} sub="Real active accounts" tone="default" />
+        <Kpi label="Roles" value={rolesCount} sub="Table blank by default" tone="accent" />
         <Kpi
           label="Finance & Admin Access"
           value={adminOrFinanceCount}
           tone={adminOrFinanceCount > 0 ? "warning" : "default"}
-          sub={`${adminOrFinanceCount} roles have access to sensitive Finance or Admin tools`}
+          sub={`${adminOrFinanceCount} roles have access`}
+          className="col-span-2 sm:col-span-1"
         />
       </div>
 
@@ -383,11 +390,10 @@ export default function Page() {
           <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-border pb-3">
             <button
               onClick={() => setActiveCategory("all")}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                activeCategory === "all"
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${activeCategory === "all"
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
+                }`}
             >
               All Modules ({ALL_SIDEBAR_ITEMS.length})
             </button>
@@ -395,11 +401,10 @@ export default function Page() {
               <button
                 key={g.group}
                 onClick={() => setActiveCategory(g.group)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${
-                  activeCategory === g.group
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-all ${activeCategory === g.group
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                  }`}
               >
                 {g.group} ({g.items.length})
               </button>
@@ -736,11 +741,10 @@ export default function Page() {
                           return (
                             <label
                               key={item.key}
-                              className={`flex items-center gap-2.5 p-2 rounded-md border text-left cursor-pointer transition-all ${
-                                isChecked
+                              className={`flex items-center gap-2.5 p-2 rounded-md border text-left cursor-pointer transition-all ${isChecked
                                   ? "border-primary/40 bg-primary/5 text-foreground"
                                   : "border-border/60 hover:bg-muted/40 text-muted-foreground"
-                              }`}
+                                }`}
                             >
                               <Checkbox
                                 id={`perm-${item.key}`}
@@ -867,19 +871,59 @@ export default function Page() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="empPhone">Phone *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="empPhone">Phone *</Label>
+                  {employeeFormData.phone ? (
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {employeeFormData.phone.length}/10 digits
+                    </span>
+                  ) : null}
+                </div>
                 <Input
                   id="empPhone"
-                  placeholder="+91 98765 43210"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="9876543210"
                   value={employeeFormData.phone}
                   onChange={(e) =>
                     setEmployeeFormData((prev) => ({
                       ...prev,
-                      phone: e.target.value,
+                      phone: sanitizePhoneInput(e.target.value),
                     }))
                   }
+                  className={cn(
+                    employeeFormData.phone &&
+                      employeeFormData.phone.length === 10 &&
+                      !isValidPhoneNumber(employeeFormData.phone) &&
+                      "border-destructive focus-visible:ring-destructive",
+                    employeeFormData.phone &&
+                      employeeFormData.phone.length < 10 &&
+                      "border-amber-500 focus-visible:ring-amber-500",
+                    employeeFormData.phone &&
+                      isValidPhoneNumber(employeeFormData.phone) &&
+                      "border-emerald-500 focus-visible:ring-emerald-500"
+                  )}
                   required
                 />
+                {employeeFormData.phone && employeeFormData.phone.length < 10 && (
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Enter {10 - employeeFormData.phone.length} more digit{10 - employeeFormData.phone.length > 1 ? "s" : ""}
+                  </p>
+                )}
+                {employeeFormData.phone &&
+                  employeeFormData.phone.length === 10 &&
+                  !isValidPhoneNumber(employeeFormData.phone) && (
+                    <p className="text-[11px] text-destructive font-medium mt-1">
+                      Must start with 6, 7, 8, or 9
+                    </p>
+                  )}
+                {employeeFormData.phone &&
+                  isValidPhoneNumber(employeeFormData.phone) && (
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> Valid 10-digit number
+                    </p>
+                  )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="empEmail">Work Email *</Label>

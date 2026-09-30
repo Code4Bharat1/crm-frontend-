@@ -323,32 +323,37 @@ export default function ProjectProfitabilityPage() {
 
       <div className="space-y-6">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <PageHeader
-            breadcrumb="Projects & Service / Profitability"
-            title="Project Profitability & Margin Analytics"
-            subtitle="Contracted revenue vs material, subcontractor, labor, travel and expenses — live cost burn and gross profit per project."
-          />
-          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => handleOpenCostModal()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95"
-            >
-              <Plus className="w-4 h-4" /> Add Cost Incurred
-            </button>
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-md transition-all text-sm active:scale-95"
-            >
-              <Download className="w-4 h-4" /> Export CSV
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          breadcrumb="Projects & Service / Profitability"
+          title="Project Profitability & Margin Analytics"
+          subtitle="Contracted revenue vs material, subcontractor, labor, travel and expenses — live cost burn and gross profit per project."
+          actions={
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button
+                onClick={() => handleOpenCostModal()}
+                size="sm"
+                className="flex items-center gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs h-8.5 px-2.5 sm:px-3 cursor-pointer"
+              >
+                <Plus className="size-3.5" />
+                <span className="hidden sm:inline">Add Cost Incurred</span>
+                <span className="sm:hidden">Add Cost</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-card shadow-xs border-border h-8.5 px-2.5 sm:px-3 cursor-pointer"
+              >
+                <Download className="size-3.5" />
+                <span className="hidden sm:inline">Export CSV</span>
+                <span className="sm:hidden">Export</span>
+              </Button>
+            </div>
+          }
+        />
 
         {/* Global Financial Metrics */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <Kpi
             label="Total Contract Revenue"
             value={fmtINR(summary.totalRevenue || 0)}

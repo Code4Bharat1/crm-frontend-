@@ -30,38 +30,38 @@ import { getUser } from "@/lib/authUtils";
 
 function FieldGroup({ title, subtitle, icon: Icon, children, badge }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
-      <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="bg-card border border-border rounded-2xl shadow-2xs overflow-hidden transition-all duration-200 hover:shadow-xs">
+      <div className="bg-muted/30 border-b border-border px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {Icon && (
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-              <Icon className="w-5 h-5" />
+            <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+              <Icon className="size-4 sm:size-5" />
             </div>
           )}
-          <div>
-            <h3 className="text-sm font-bold text-gray-800 tracking-wide uppercase">{title}</h3>
-            {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xs sm:text-sm font-bold text-foreground tracking-wide uppercase truncate">{title}</h3>
+            {subtitle && <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">{subtitle}</p>}
           </div>
         </div>
         {badge && (
-          <span className="text-xs font-semibold px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full">
+          <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 sm:px-2.5 sm:py-1 bg-primary/15 text-primary rounded-full shrink-0">
             {badge}
           </span>
         )}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-3.5 sm:p-6">{children}</div>
     </div>
   );
 }
 
 function FormField({ label, required, hint, children }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-gray-700 tracking-wide">
-          {label} {required && <span className="text-red-500">*</span>}
+    <div className="flex flex-col gap-1 sm:gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-0.5 sm:gap-2">
+        <label className="text-xs font-semibold text-foreground tracking-wide">
+          {label} {required && <span className="text-destructive font-bold">*</span>}
         </label>
-        {hint && <span className="text-[11px] text-gray-400">{hint}</span>}
+        {hint && <span className="text-[10px] sm:text-[11px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
     </div>
@@ -74,7 +74,7 @@ function TextInput({ value, onChange, placeholder = "", type = "text", disabled 
       id={id}
       type={type}
       disabled={disabled}
-      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:text-gray-500"
+      className="w-full border border-border rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-foreground bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors disabled:bg-muted disabled:text-muted-foreground"
       value={value || ""}
       onChange={onChange}
       placeholder={placeholder}
@@ -88,7 +88,7 @@ function TextAreaInput({ value, onChange, placeholder = "", rows = 3, id, ...pro
     <textarea
       id={id}
       rows={rows}
-      className="w-full border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors leading-relaxed"
+      className="w-full border border-border rounded-xl px-3 sm:px-3.5 py-2 sm:py-2.5 text-xs sm:text-sm text-foreground bg-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors leading-relaxed"
       value={value || ""}
       onChange={onChange}
       placeholder={placeholder}
@@ -143,37 +143,32 @@ function MediaUploadCard({
   };
 
   return (
-    <div className="border border-gray-200 bg-gray-50/50 rounded-2xl p-5 flex flex-col justify-between transition-all hover:border-gray-300">
+    <div className="border border-border bg-muted/20 rounded-2xl p-3.5 sm:p-5 flex flex-col justify-between transition-all hover:border-border/80">
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-100/70 text-blue-700 rounded-lg">
-              <Icon className="w-4 h-4" />
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0">
+              <Icon className="size-4" />
             </div>
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800">{title}</h4>
-              <p className="text-[11px] text-gray-500">{subtitle}</p>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground truncate">{title}</h4>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{subtitle}</p>
             </div>
           </div>
           {value ? (
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-              <CheckCircle2 className="w-3 h-3" /> Active
+            <span className="flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full shrink-0">
+              <CheckCircle2 className="size-3" /> Active
             </span>
           ) : (
-            <span className="text-[11px] text-gray-400 italic">Not set</span>
+            <span className="text-[10px] sm:text-[11px] text-muted-foreground italic shrink-0">Not set</span>
           )}
         </div>
 
         {/* Preview or Upload Zone */}
         {value ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             <div
-              className="relative h-32 w-full rounded-xl border border-gray-200 flex items-center justify-center p-3 overflow-hidden"
-              style={{
-                backgroundImage: `radial-gradient(#e5e7eb 1px, transparent 1px)`,
-                backgroundColor: "#fafafa",
-                backgroundSize: "10px 10px",
-              }}
+              className="relative h-28 sm:h-32 w-full rounded-xl border border-border flex items-center justify-center p-3 overflow-hidden bg-muted/40"
             >
               <img
                 src={resolvePreviewUrl(value)}
@@ -186,17 +181,17 @@ function MediaUploadCard({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="text-xs font-medium text-primary hover:underline flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${uploading ? "animate-spin" : ""}`} /> Replace
+                <RefreshCw className={`size-3.5 ${uploading ? "animate-spin" : ""}`} /> Replace
               </button>
               <button
                 type="button"
                 onClick={() => onRemove(type)}
                 disabled={uploading}
-                className="text-xs font-medium text-red-600 hover:text-red-700 flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="text-xs font-medium text-destructive hover:underline flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" /> Remove
+                <Trash2 className="size-3.5" /> Remove
               </button>
             </div>
           </div>
@@ -207,37 +202,37 @@ function MediaUploadCard({
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[128px] ${
+              className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] sm:min-h-[128px] ${
                 isDragging
-                  ? "border-blue-500 bg-blue-50/50"
-                  : "border-gray-300 hover:border-blue-400 bg-white hover:bg-gray-50"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/60 bg-background hover:bg-muted/40"
               }`}
             >
-              <UploadCloud className={`w-8 h-8 mb-2 ${isDragging ? "text-blue-600" : "text-gray-400"}`} />
-              <p className="text-xs font-semibold text-gray-700">
-                {uploading ? "Uploading..." : "Click or drag & drop to upload"}
+              <UploadCloud className={`size-7 sm:size-8 mb-1.5 sm:mb-2 ${isDragging ? "text-primary" : "text-muted-foreground"}`} />
+              <p className="text-xs font-semibold text-foreground">
+                {uploading ? "Uploading..." : "Click or drag to upload"}
               </p>
-              <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, SVG, WebP (up to 5MB)</p>
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5">PNG, JPG, SVG, WebP (up to 5MB)</p>
             </div>
 
-            <div className="mt-2.5 flex items-center justify-between text-[11px]">
+            <div className="mt-2 flex items-center justify-between text-[11px]">
               <button
                 type="button"
                 onClick={() => setShowUrlInput(!showUrlInput)}
-                className="text-blue-600 hover:underline flex items-center gap-1"
+                className="text-primary hover:underline flex items-center gap-1 text-xs cursor-pointer"
               >
-                <Link2 className="w-3 h-3" /> {showUrlInput ? "Hide URL input" : "Or enter image URL"}
+                <Link2 className="size-3" /> {showUrlInput ? "Hide URL input" : "Or enter image URL"}
               </button>
             </div>
 
             {showUrlInput && (
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex gap-1.5 sm:gap-2">
                 <input
                   type="text"
                   placeholder="https://..."
                   value={tempUrl}
                   onChange={(e) => setTempUrl(e.target.value)}
-                  className="flex-1 text-xs border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-xs border border-border bg-background text-foreground rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <button
                   type="button"
@@ -248,7 +243,7 @@ function MediaUploadCard({
                       setShowUrlInput(false);
                     }
                   }}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700"
+                  className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 shadow-2xs cursor-pointer"
                 >
                   Set
                 </button>
@@ -271,9 +266,9 @@ function MediaUploadCard({
         />
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-200/60 flex items-start gap-1.5 text-[11px] text-gray-500">
-        <Info className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-        <span>{recommendation}</span>
+      <div className="mt-3 pt-2.5 border-t border-border/60 flex items-start gap-1.5 text-[10px] sm:text-[11px] text-muted-foreground">
+        <Info className="size-3.5 text-muted-foreground/70 mt-0.5 shrink-0" />
+        <span className="leading-tight">{recommendation}</span>
       </div>
     </div>
   );
@@ -344,7 +339,7 @@ export default function CompanySettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingField, setUploadingField] = useState(null);
-  const [activeTab, setActiveTab] = useState("general"); // "general" | "branding" | "banking" | "terms" | "preview"
+  const [activeTab, setActiveTab] = useState("general"); // "general" | "branding" | "banking" | "terms" | "weekend" | "preview"
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = "success") => {
@@ -417,7 +412,6 @@ export default function CompanySettingsPage() {
           showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} image updated!`);
         }
       } catch (err) {
-        // Fallback to base64 encoding if upload endpoint encounters an issue
         set(fieldKey, base64Data);
         showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} saved locally`);
       } finally {
@@ -442,8 +436,8 @@ export default function CompanySettingsPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-3">
-        <div className="animate-spin w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full" />
-        <span className="text-sm font-medium text-gray-500">Loading company settings...</span>
+        <div className="animate-spin w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full" />
+        <span className="text-sm font-medium text-muted-foreground">Loading company settings...</span>
       </div>
     );
   }
@@ -454,36 +448,34 @@ export default function CompanySettingsPage() {
     <>
       {toast && (
         <div
-          className={`fixed top-5 right-5 z-50 px-5 py-3.5 rounded-xl shadow-2xl text-white text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200 ${
-            toast.type === "error" ? "bg-red-600" : "bg-emerald-600"
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl text-white text-xs sm:text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200 ${
+            toast.type === "error" ? "bg-destructive" : "bg-emerald-600"
           }`}
         >
           {toast.type === "error" ? "⚠️" : "✅"} {toast.msg}
         </div>
       )}
 
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <PageHeader
-            breadcrumb="Settings / Company"
-            title="Company Settings"
-            subtitle="Configure company identity, registered address, tax details, branding media, bank accounts, and print letterhead."
-          />
-          <div className="flex items-center gap-3 self-end sm:self-auto">
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          breadcrumb="Settings / Company"
+          title="Company Settings"
+          subtitle="Configure company identity, registered address, tax details, branding media, bank accounts, and print letterhead."
+          actions={
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all disabled:opacity-60 text-sm active:scale-95"
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold shadow-xs transition-all disabled:opacity-60 text-xs sm:text-sm active:scale-95 w-full sm:w-auto cursor-pointer"
             >
-              <Save className={`w-4 h-4 ${saving ? "animate-spin" : ""}`} />
+              <Save className={`size-3.5 sm:size-4 ${saving ? "animate-spin" : ""}`} />
               {saving ? "Saving Changes..." : "Save Settings"}
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-gray-200 pb-1 overflow-x-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-border pb-2 overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
           {[
             { id: "general", label: "Profile & Address", icon: Building2 },
             { id: "branding", label: "Logo, Sign & Stamp", icon: ImageIcon, badge: (form.logoUrl && form.signatureUrl && form.stampUrl) ? "All Set" : null },
@@ -499,20 +491,20 @@ export default function CompanySettingsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 cursor-pointer ${
                   isActive
                     ? tab.highlight
-                      ? "bg-purple-600 text-white shadow-sm"
-                      : "bg-blue-600 text-white shadow-sm"
+                      ? "bg-purple-600 text-white shadow-2xs"
+                      : "bg-primary text-primary-foreground shadow-2xs"
                     : tab.highlight
-                    ? "text-purple-600 bg-purple-50 hover:bg-purple-100"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    ? "text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted border border-border/40"
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {tab.label}
+                <Icon className="size-3.5 sm:size-4 shrink-0" />
+                <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="ml-1 text-[10px] px-1.5 py-0.2 bg-emerald-500 text-white rounded-full">
+                  <span className="ml-1 text-[9px] sm:text-[10px] px-1.5 py-0.2 bg-emerald-500 text-white rounded-full font-semibold">
                     {tab.badge}
                   </span>
                 )}
@@ -523,14 +515,14 @@ export default function CompanySettingsPage() {
 
         {/* ─── TAB: GENERAL (PROFILE, TAX, ADDRESS) ───────────────────────── */}
         {activeTab === "general" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl">
             <FieldGroup
               title="Company Identity"
               subtitle="Basic organisation details that appear on the letterhead header"
               icon={Building2}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
+                <div className="sm:col-span-2">
                   <FormField label="Company Legal Name" required hint="Used on all invoices & legal documents">
                     <TextInput
                       value={form.name}
@@ -576,7 +568,7 @@ export default function CompanySettingsPage() {
               subtitle="Statutory registrations displayed on invoices, quotations and delivery notes"
               icon={FileText}
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
                 <FormField label="GSTIN (GST Number)" hint="15 characters">
                   <TextInput
                     value={form.gstNumber}
@@ -606,8 +598,8 @@ export default function CompanySettingsPage() {
               subtitle="Printed under the company letterhead across all generated PDFs"
               icon={MapPin}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
+                <div className="sm:col-span-2">
                   <FormField label="Address Line 1" required>
                     <TextInput
                       value={form.address?.line1}
@@ -616,7 +608,7 @@ export default function CompanySettingsPage() {
                     />
                   </FormField>
                 </div>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <FormField label="Address Line 2">
                     <TextInput
                       value={form.address?.line2}
@@ -660,13 +652,13 @@ export default function CompanySettingsPage() {
 
         {/* ─── TAB: BRANDING (LOGO, SIGN, STAMP) ───────────────────────────── */}
         {activeTab === "branding" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl">
             <FieldGroup
               title="Branding & Media Assets"
               subtitle="Upload high-resolution graphics for the letterhead logo, digital signature, and company stamp"
               icon={ImageIcon}
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 <MediaUploadCard
                   title="Company Logo"
                   subtitle="Top Letterhead"
@@ -708,22 +700,22 @@ export default function CompanySettingsPage() {
               </div>
             </FieldGroup>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4">
-              <div className="p-2 bg-blue-600 text-white rounded-xl shrink-0">
-                <Eye className="w-5 h-5" />
+            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
+              <div className="p-2 bg-primary text-primary-foreground rounded-xl shrink-0">
+                <Eye className="size-4 sm:size-5" />
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-bold text-blue-900">How do these graphics appear on documents?</h4>
-                <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                  The <strong>Company Logo</strong> appears on the top-left of the letterhead header alongside your registered name and address.
-                  The <strong>Official Stamp</strong> and <strong>Authorised Signature</strong> are rendered together at the bottom right of Quotations,
+                <h4 className="text-xs sm:text-sm font-bold text-foreground">How do these graphics appear on documents?</h4>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  The <strong className="text-foreground">Company Logo</strong> appears on the top-left of the letterhead header alongside your registered name and address.
+                  The <strong className="text-foreground">Official Stamp</strong> and <strong className="text-foreground">Authorised Signature</strong> are rendered together at the bottom right of Quotations,
                   Proforma Invoices, Sales Orders, Delivery Notes, and Tax Invoices right above the <em>Authorised Signatory</em> line.
                 </p>
-                <div className="mt-3">
+                <div className="mt-2.5 sm:mt-3">
                   <button
                     type="button"
                     onClick={() => setActiveTab("preview")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
                   >
                     Switch to Live Document Preview →
                   </button>
@@ -735,13 +727,13 @@ export default function CompanySettingsPage() {
 
         {/* ─── TAB: BANKING & PAYMENTS ────────────────────────────────────── */}
         {activeTab === "banking" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl">
             <FieldGroup
               title="Bank & Payment Details"
               subtitle="Printed on Sales Invoices, Proformas, and Quotations for client remittances"
               icon={Landmark}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-5">
                 <FormField label="Bank Name" required>
                   <TextInput
                     value={form.bankDetails?.bankName}
@@ -784,7 +776,7 @@ export default function CompanySettingsPage() {
                     placeholder="HDFCINBBXXX"
                   />
                 </FormField>
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <FormField label="UPI ID / VPA" hint="For instant UPI payments">
                     <TextInput
                       value={form.bankDetails?.upiId}
@@ -800,13 +792,13 @@ export default function CompanySettingsPage() {
 
         {/* ─── TAB: TERMS & DOCUMENT FOOTER ───────────────────────────────── */}
         {activeTab === "terms" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl">
             <FieldGroup
               title="Signatory & Legal Text"
               subtitle="Configured text printed at the bottom and signature block of every document"
               icon={FileText}
             >
-              <div className="space-y-5">
+              <div className="space-y-3.5 sm:space-y-5">
                 <FormField
                   label="Authorised Signatory Entity Line"
                   hint="Printed above the signature and stamp in document sign-off"
@@ -848,22 +840,22 @@ export default function CompanySettingsPage() {
 
         {/* ─── TAB: WEEKEND WORK & ATTENDANCE POLICY ───────────────────────── */}
         {activeTab === "weekend" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-4 sm:space-y-6 max-w-4xl">
             <WeekendPolicyCard currentUser={getUser()} />
           </div>
         )}
 
         {/* ─── TAB: LIVE DOCUMENT PREVIEW ─────────────────────────────────── */}
         {activeTab === "preview" && (
-          <div className="space-y-4">
-            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-600 text-white rounded-xl">
-                  <Eye className="w-5 h-5" />
+          <div className="space-y-3.5 sm:space-y-4">
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="p-2 bg-purple-600 text-white rounded-xl shrink-0">
+                  <Eye className="size-4 sm:size-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-purple-950">Live Letterhead Document Preview</h4>
-                  <p className="text-xs text-purple-700">
+                  <h4 className="text-xs sm:text-sm font-bold text-foreground">Live Letterhead Document Preview</h4>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">
                     This interactive preview uses your live company settings, logo, stamp, signature, bank info, and address.
                   </p>
                 </div>
@@ -872,36 +864,38 @@ export default function CompanySettingsPage() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow transition-colors disabled:opacity-60"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors disabled:opacity-60 w-full sm:w-auto cursor-pointer"
               >
                 {saving ? "Saving..." : "Save Settings"}
               </button>
             </div>
 
-            <div className="border border-gray-300 rounded-2xl overflow-hidden shadow-lg bg-gray-100 p-4">
-              <DocumentPrintView
-                doc={sampleDocData}
-                type="Sales Invoice"
-                company={form}
-                embedded={true}
-                onClose={() => setActiveTab("general")}
-              />
+            <div className="border border-border rounded-2xl overflow-x-auto shadow-sm bg-muted/40 p-2 sm:p-4 no-scrollbar">
+              <div className="min-w-[600px] sm:min-w-0">
+                <DocumentPrintView
+                  doc={sampleDocData}
+                  type="Sales Invoice"
+                  company={form}
+                  embedded={true}
+                  onClose={() => setActiveTab("general")}
+                />
+              </div>
             </div>
           </div>
         )}
 
         {/* Bottom Save bar */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200 max-w-4xl">
-          <div className="text-xs text-gray-500">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-border max-w-4xl">
+          <div className="text-xs text-muted-foreground text-center sm:text-left">
             {saving ? "Saving changes to database..." : "Make sure to click Save to persist any modifications."}
           </div>
           <button
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-md transition-all disabled:opacity-60 text-sm active:scale-95"
+            className="flex items-center justify-center gap-2 px-6 sm:px-8 py-2.5 sm:py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold shadow-xs transition-all disabled:opacity-60 text-xs sm:text-sm active:scale-95 w-full sm:w-auto cursor-pointer"
           >
-            <Save className={`w-4 h-4 ${saving ? "animate-spin" : ""}`} />
+            <Save className={`size-4 ${saving ? "animate-spin" : ""}`} />
             {saving ? "Saving Changes..." : "Save Company Settings"}
           </button>
         </div>

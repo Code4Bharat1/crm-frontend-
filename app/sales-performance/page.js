@@ -138,7 +138,7 @@ export default function SalesPerformancePage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <Kpi 
           label="Salespeople" 
           value={summary.salespeopleCount} 
@@ -170,14 +170,14 @@ export default function SalesPerformancePage() {
           <p className="text-sm font-medium">Loading real sales performance records...</p>
         </div>
       ) : salespeople.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
+        <div className="mt-8 rounded-xl border border-dashed border-border p-8 sm:p-12 text-center text-muted-foreground">
           <Users className="mx-auto size-10 text-muted-foreground/60 mb-2" />
           <h3 className="text-base font-semibold text-foreground">No Sales Team Members Found</h3>
           <p className="mt-1 text-xs">Ensure employees are registered with role or department as &quot;Sales&quot;.</p>
         </div>
       ) : (
         <>
-          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 sm:mt-5 grid gap-3 sm:gap-4 lg:grid-cols-2">
             {salespeople.map((s) => {
               const pct = s.pct ?? (s.target > 0 ? Math.round(((s.achieved ?? 0) / s.target) * 100) : 0);
               const isAbove = pct >= 100;
@@ -187,62 +187,62 @@ export default function SalesPerformancePage() {
                   title={s.name.toUpperCase()} 
                   description={`${s.code} · ${s.department}`}
                   actions={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       {canSetTarget && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => openTargetModal(s)}
-                          className="h-7 text-xs font-semibold gap-1.5 border-primary/40 text-primary hover:bg-primary/10 shadow-2xs cursor-pointer"
+                          className="h-7 text-[11px] sm:text-xs font-semibold gap-1 sm:gap-1.5 px-2 sm:px-2.5 border-primary/40 text-primary hover:bg-primary/10 shadow-2xs cursor-pointer"
                         >
                           <Pencil className="size-3" />
                           <span>Set Target</span>
                         </Button>
                       )}
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold ${
                         isAbove 
-                          ? "bg-emerald-100 text-emerald-800" 
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" 
                           : pct >= 50 
-                          ? "bg-blue-100 text-blue-800" 
-                          : "bg-amber-100 text-amber-800"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" 
+                          : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
                       }`}>
                         {isAbove ? "Above Target" : pct >= 50 ? "On Track" : "In Progress"}
                       </span>
                     </div>
                   }
                 >
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {/* 1. Target with Edit Action */}
                     <div 
                       onClick={() => canSetTarget && openTargetModal(s)}
-                      className={`rounded-md border border-border bg-muted/40 px-3 py-2 relative flex flex-col justify-between transition-colors ${
+                      className={`rounded-lg border border-border bg-muted/40 p-2.5 sm:p-3 relative flex flex-col justify-between transition-colors ${
                         canSetTarget ? "hover:border-primary/50 hover:bg-muted/70 cursor-pointer group" : ""
                       }`}
                       title={canSetTarget ? "Click to change target" : undefined}
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Target</p>
                         {canSetTarget && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:underline">
+                          <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-primary group-hover:underline">
                             <Pencil className="size-2.5" />
                             <span>Edit</span>
                           </span>
                         )}
                       </div>
-                      <p className="font-display text-lg font-bold text-foreground mt-0.5">
+                      <p className="font-display text-base sm:text-lg font-bold text-foreground mt-0.5">
                         {inrShort(s.target ?? 0)}
                       </p>
                     </div>
 
                     {/* 2. Achieved - Driven by Quotation Amount */}
-                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Achieved</p>
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                    <div className="rounded-lg border border-border bg-muted/40 p-2.5 sm:p-3 flex flex-col justify-between">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Achieved</p>
+                        <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded border truncate ${
                           (s.confirmedQuotations ?? 0) > 0 
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" 
                             : (s.quotations ?? 0) > 0
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
                             : "bg-muted text-muted-foreground border-border"
                         }`}>
                           {(s.confirmedQuotations ?? 0) > 0 
@@ -252,38 +252,38 @@ export default function SalesPerformancePage() {
                             : "0 Quotes"}
                         </span>
                       </div>
-                      <p className="font-display text-lg font-bold text-foreground mt-0.5">
+                      <p className="font-display text-base sm:text-lg font-bold text-foreground mt-0.5">
                         {inrShort(s.achieved ?? 0)}
                       </p>
                     </div>
 
                     {/* 3. Won Leads */}
-                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 flex flex-col justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Won Leads</p>
+                    <div className="rounded-lg border border-border bg-muted/40 p-2.5 sm:p-3 flex flex-col justify-between">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Won Leads</p>
                       <div className="flex items-baseline gap-1.5 mt-0.5">
-                        <span className={`font-display text-lg font-bold ${(s.wonLeads ?? 0) > 0 ? "text-emerald-600" : "text-foreground"}`}>
+                        <span className={`font-display text-base sm:text-lg font-bold ${(s.wonLeads ?? 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
                           {String(s.wonLeads ?? 0)}
                         </span>
-                        <span className="text-xs text-muted-foreground font-normal">
+                        <span className="text-[11px] sm:text-xs text-muted-foreground font-normal">
                           / {s.leads ?? 0} total leads
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center gap-3">
-                    <Progress value={Math.min(pct, 100)} className="h-2.5" />
-                    <span className={`w-14 text-right text-sm font-bold ${isAbove ? "text-emerald-600 font-extrabold" : "text-foreground"}`}>
+                  <div className="mt-2.5 sm:mt-3 flex items-center gap-2.5 sm:gap-3">
+                    <Progress value={Math.min(pct, 100)} className="h-2 sm:h-2.5 flex-1" />
+                    <span className={`w-12 sm:w-14 text-right text-xs sm:text-sm font-bold shrink-0 ${isAbove ? "text-emerald-600 dark:text-emerald-400 font-extrabold" : "text-foreground"}`}>
                       {pct}%
                     </span>
                   </div>
 
-                  <div className="mt-2.5 flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="mt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] sm:text-xs text-muted-foreground border-t border-border/40 pt-2">
                     <span>
                       <strong className="text-foreground font-semibold">{s.wonLeads ?? 0} won</strong> out of {s.leads ?? 0} assigned leads ({s.leads > 0 ? Math.round(((s.wonLeads ?? 0) / s.leads) * 100) : 0}% conversion)
                     </span>
-                    <span className="font-semibold text-foreground">
-                      <strong className="text-emerald-600 font-semibold">{s.confirmedQuotations ?? 0} confirmed</strong> / {s.quotations ?? 0} quotations ({inrShort(s.quotationValue ?? 0)})
+                    <span className="text-foreground">
+                      <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{s.confirmedQuotations ?? 0} confirmed</strong> / {s.quotations ?? 0} quotations ({inrShort(s.quotationValue ?? 0)})
                     </span>
                   </div>
                 </Section>
@@ -291,7 +291,7 @@ export default function SalesPerformancePage() {
             })}
           </div>
 
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             <Section 
               title="Team comparison" 
               description="Comparative quota achievement and lead conversion across the sales unit"
@@ -301,44 +301,54 @@ export default function SalesPerformancePage() {
               ) : (
                 <ul className="divide-y divide-border">
                   {teamComparison.map((s) => (
-                    <li key={s.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 px-1 hover:bg-muted/30 transition-colors rounded-md">
-                      <div className="flex items-center gap-2.5">
-                        <div className="size-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs">
+                    <li key={s.name} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 py-3 px-1 hover:bg-muted/30 transition-colors rounded-md">
+                      <div className="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                        <div className="size-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs shrink-0 mt-0.5 sm:mt-0">
                           {s.name.charAt(0)}
                         </div>
-                        <div>
-                          <span className="font-semibold text-sm text-foreground">{s.name}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            <span className="font-semibold text-emerald-600">{s.wonLeads} won leads</span> · <span className="font-semibold text-emerald-700">{s.confirmedQuotations ?? 0} confirmed quotes</span> · {s.leads} total leads · {s.quotations} quotations ({inrShort(s.quotationValue || 0)})
-                          </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold text-sm text-foreground block sm:inline">{s.name}</span>
+                          <div className="text-xs text-muted-foreground mt-0.5 sm:mt-0 sm:ml-2 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{s.wonLeads} won</span>
+                            <span>·</span>
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-300">{s.confirmedQuotations ?? 0} confirmed</span>
+                            <span>·</span>
+                            <span>{s.leads} leads</span>
+                            <span>·</span>
+                            <span>{s.quotations} quotes ({inrShort(s.quotationValue || 0)})</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-right text-xs">
-                        <span className="text-muted-foreground">Target ₹{s.target.toFixed(1)}L</span>
-                        <span className="font-bold text-foreground">Achieved ₹{s.achieved.toFixed(1)}L</span>
-                        <span className={`px-2 py-0.5 rounded font-bold ${
-                          s.pct >= 100 
-                            ? "bg-emerald-100 text-emerald-800" 
-                            : s.pct >= 50 
-                            ? "bg-blue-100 text-blue-800" 
-                            : "bg-gray-100 text-gray-700"
-                        }`}>
-                          {s.pct}%
-                        </span>
-                        {canSetTarget && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const found = salespeople.find(p => p.name === s.name);
-                              if (found) openTargetModal(found);
-                            }}
-                            className="h-7 px-2 text-xs text-primary hover:bg-primary/10 cursor-pointer"
-                          >
-                            <Pencil className="size-3 mr-1" />
-                            <span>Set Target</span>
-                          </Button>
-                        )}
+                      <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 text-xs w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">Target ₹{s.target.toFixed(1)}L</span>
+                          <span className="font-bold text-foreground">Achieved ₹{s.achieved.toFixed(1)}L</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded font-bold ${
+                            s.pct >= 100 
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" 
+                              : s.pct >= 50 
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" 
+                              : "bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground"
+                          }`}>
+                            {s.pct}%
+                          </span>
+                          {canSetTarget && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const found = salespeople.find(p => p.name === s.name);
+                                if (found) openTargetModal(found);
+                              }}
+                              className="h-7 px-2 text-xs text-primary hover:bg-primary/10 cursor-pointer"
+                            >
+                              <Pencil className="size-3 mr-1" />
+                              <span>Set Target</span>
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}

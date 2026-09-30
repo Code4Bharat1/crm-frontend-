@@ -183,27 +183,29 @@ export function AdminAttendanceSummary() {
   const absentToday = statsData?.absentToday ?? 0;
   const leaveToday = statsData?.leaveToday ?? 0;
   const attendanceRate = statsData?.attendanceRateToday ?? (totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0);
-  const overtimeHours = statsData?.totalOvertimeHours ?? 0;
+  const overtimeHours = (statsData?.totalOvertimeHours && statsData.totalOvertimeHours > 0 && statsData.totalOvertimeHours < 100) 
+    ? statsData.totalOvertimeHours 
+    : 0;
 
   return (
-    <div className="rounded-2xl border border-blue-200/80 bg-white/95 dark:bg-card/95 shadow-xs overflow-hidden transition-all">
+    <div className="rounded-2xl border border-blue-200/80 bg-white/95 dark:bg-card/95 shadow-xs overflow-hidden transition-all min-w-0 w-full">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/90 dark:from-blue-950/40 dark:to-indigo-950/30 border-b border-blue-100/80">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/90 dark:from-blue-950/40 dark:to-indigo-950/30 border-b border-blue-100/80">
+        <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="p-2 sm:p-2.5 bg-blue-600 text-white rounded-xl shadow-2xs shrink-0 mt-0.5 sm:mt-0">
             <Users className="w-4 h-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug">
                 Staff Attendance & Workforce Overview
               </h2>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-2xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-2xs shrink-0 whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
                 Live Today
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-tight">
               {currentTime.toLocaleDateString("en-IN", {
                 weekday: "long",
                 day: "numeric",
@@ -215,11 +217,11 @@ export function AdminAttendanceSummary() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
           <button
             type="button"
             onClick={() => setShowAdminPunch(!showAdminPunch)}
-            className="h-8 px-2.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100/70 hover:bg-blue-200/80 dark:bg-blue-900/40 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors flex items-center gap-1 cursor-pointer"
+            className="h-8 px-2.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100/70 hover:bg-blue-200/80 dark:bg-blue-900/40 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
             title="Toggle personal punch-in terminal"
           >
             <Clock className="w-3.5 h-3.5 text-blue-600" />
@@ -232,7 +234,7 @@ export function AdminAttendanceSummary() {
             variant="outline"
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="h-8 px-2.5 text-xs font-semibold bg-white hover:bg-blue-50 text-gray-700 border-gray-200 shadow-2xs cursor-pointer flex items-center gap-1.5"
+            className="h-8 px-2.5 text-xs font-semibold bg-white hover:bg-blue-50 text-gray-700 border-gray-200 shadow-2xs cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <RotateCw className={`w-3.5 h-3.5 text-blue-600 ${refreshing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">{refreshing ? "Refreshing..." : "Refresh"}</span>
@@ -242,7 +244,7 @@ export function AdminAttendanceSummary() {
             size="sm"
             variant="ghost"
             asChild
-            className="h-8 px-2.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/60"
+            className="h-8 px-2.5 text-xs font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100/60 shrink-0"
           >
             <Link href="/attendance">
               Full Ledger <ArrowRight className="w-3 h-3 ml-1" />
@@ -318,7 +320,7 @@ export function AdminAttendanceSummary() {
       )}
 
       {/* KPI Cards Strip */}
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 min-w-0 w-full">
         {/* Total Staff */}
         <div className="p-3 rounded-xl bg-gray-50 dark:bg-muted/40 border border-gray-200/80 dark:border-border">
           <div className="flex items-center justify-between">
@@ -409,15 +411,15 @@ export function AdminAttendanceSummary() {
             <span className="text-xl font-extrabold text-purple-700 dark:text-purple-400">
               {leaveToday}
             </span>
-            <span className="text-[11px] text-purple-600 font-bold">Leave • {overtimeHours}h OT</span>
+            <span className="text-[11px] text-purple-600 font-bold">Leave · {overtimeHours}h OT</span>
           </div>
         </div>
       </div>
 
       {/* Roster Controls: Search & Tabs */}
       <div className="px-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-gray-100 dark:border-border/60 pt-3">
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 text-xs font-semibold">
+        {/* Filter Tabs (Horizontal scrolling on mobile) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1 text-xs font-semibold">
           {[
             { key: "All", label: `All Staff (${roster.length})` },
             { key: "WORKING", label: `Working Now (${workingNow})` },
@@ -429,7 +431,7 @@ export function AdminAttendanceSummary() {
               key={tab.key}
               type="button"
               onClick={() => setStatusFilter(tab.key)}
-              className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                 statusFilter === tab.key
                   ? "bg-blue-600 text-white shadow-2xs font-bold"
                   : "text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-muted"
@@ -453,8 +455,103 @@ export function AdminAttendanceSummary() {
         </div>
       </div>
 
-      {/* Today's Roster Table */}
-      <div className="overflow-x-auto border-t border-gray-100 dark:border-border/60">
+      {/* Mobile Card List View (< 768px) */}
+      <div className="block md:hidden border-t border-gray-100 dark:border-border/60 divide-y divide-gray-100 dark:divide-border/40">
+        {loading ? (
+          <div className="py-8 text-center text-muted-foreground">
+            <div className="flex items-center justify-center gap-2">
+              <RotateCw className="w-4 h-4 animate-spin text-blue-600" />
+              <span>Loading workforce attendance roster...</span>
+            </div>
+          </div>
+        ) : filteredRoster.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground">
+            No staff members match the selected filter.
+          </div>
+        ) : (
+          filteredRoster.map((emp) => {
+            const initials = (emp.fullName || "EMP")
+              .split(" ")
+              .map((w) => w[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2);
+
+            return (
+              <div key={emp.employeeId || emp.employeeCode} className="p-3.5 space-y-2 hover:bg-blue-50/20 dark:hover:bg-muted/20">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center border border-blue-200 dark:border-blue-800 shrink-0">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-foreground truncate">{emp.fullName}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {emp.employeeCode} · {emp.role || "Staff"} ({emp.department || "General"})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {emp.status === "WORKING" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300/80">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Working
+                      </span>
+                    )}
+                    {emp.status === "COMPLETED" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-300/80">
+                        <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                        Completed
+                      </span>
+                    )}
+                    {emp.status === "LEAVE" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-300/80">
+                        Leave
+                      </span>
+                    )}
+                    {emp.status === "NOT_PUNCHED_IN" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-400 border border-gray-200">
+                        Not In
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {emp.status === "NOT_PUNCHED_IN" ? (
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-gray-50/70 dark:bg-muted/20 px-2.5 py-1.5 rounded-lg border border-dashed border-gray-200 dark:border-border">
+                    <Clock className="w-3 h-3 text-gray-400" />
+                    <span>Shift not started · Not clocked in yet today</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 bg-gray-50/60 dark:bg-muted/20 p-2 rounded-lg text-[11px]">
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">In</span>
+                      <span className="font-mono font-medium text-foreground">{fmtTime(emp.checkIn)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">Out</span>
+                      <span className="font-mono font-medium text-foreground">{fmtTime(emp.checkOut)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground block">Worked</span>
+                      <span className="font-bold text-emerald-600">
+                        {emp.workedMinutes > 0 ? fmtDuration(emp.workedMinutes) : "-"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {emp.remarks && (
+                  <p className="text-[10px] text-muted-foreground italic truncate">Note: {emp.remarks}</p>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Roster Table (>= 768px) */}
+      <div className="hidden md:block overflow-x-auto border-t border-gray-100 dark:border-border/60">
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="bg-gray-50/80 dark:bg-muted/30 text-muted-foreground font-bold uppercase tracking-wider border-b border-gray-200/60 dark:border-border/50 text-[10px]">

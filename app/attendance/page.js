@@ -384,164 +384,163 @@ export default function Page() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 sm:space-y-6 pb-12">
       {/* Header & Main Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PageHeader
-          breadcrumb={isAdmin ? "People / Attendance & Workforce" : "Employee Self-Service / Attendance"}
-          title={isAdmin ? "Attendance & Biometric Registry (Admin Panel)" : "My Attendance & Shift Log (Employee Panel)"}
-          subtitle={isAdmin
-            ? "Real biometric attendance logs, daily check-in/out records, leave tracking, and overtime analytics across all employees."
-            : "Clock in and clock out for your daily shifts, track personal attendance, and view your overtime hours."}
-        />
-        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportAttendanceCSV}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-white shadow-sm border-gray-200"
-          >
-            <Download className="w-3.5 h-3.5 text-gray-600" />
-            {isAdmin ? "Export CSV" : "Export My Records"}
-          </Button>
-
-          {isAdmin && (
+      <PageHeader
+        breadcrumb={isAdmin ? "People / Attendance & Workforce" : "Employee Self-Service / Attendance"}
+        title={isAdmin ? "Attendance & Biometric Registry (Admin Panel)" : "My Attendance & Shift Log (Employee Panel)"}
+        subtitle={isAdmin
+          ? "Real biometric attendance logs, daily check-in/out records, leave tracking, and overtime analytics across all employees."
+          : "Clock in and clock out for your daily shifts, track personal attendance, and view your overtime hours."}
+        actions={
+          <div className="flex items-center gap-2">
             <Button
+              variant="outline"
               size="sm"
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+              onClick={exportAttendanceCSV}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-card shadow-xs border-border h-8.5 px-2.5 sm:px-3 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Mark Attendance
+              <Download className="size-3.5" />
+              <span className="hidden sm:inline">{isAdmin ? "Export CSV" : "Export My Records"}</span>
+              <span className="sm:hidden">Export</span>
             </Button>
-          )}
-        </div>
-      </div>
 
-      {/* Real-time KPI Cards */}
+            {isAdmin && (
+              <Button
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs h-8.5 px-2.5 sm:px-3 cursor-pointer"
+              >
+                <Plus className="size-3.5" />
+                <span>Mark Attendance</span>
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Real-time KPI Cards: Compact 2-column grid on mobile, 4-col on desktop */}
       {!isAdmin ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="w-6 h-6" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <UserCheck className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">Today's Shift Status</div>
-              <div className="text-lg font-bold text-gray-900 mt-0.5">
-                {stats.presentToday === 1 ? "Present / Active" : "Not Punched Today"}
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">Today's Shift</div>
+              <div className="text-base sm:text-lg font-bold text-foreground mt-0.5 truncate">
+                {stats.presentToday === 1 ? "Present / Active" : "Not Punched"}
               </div>
-              <div className="text-[11px] font-semibold text-emerald-600 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
                 {stats.presentToday === 1 ? "Shift logged" : "Ready to punch in"}
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Calendar className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Calendar className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">My Days Present</div>
-              <div className="text-xl font-bold text-gray-900 mt-0.5">
-                {summary[0]?.presentDays ?? stats.personalPresentDays ?? 0} <span className="text-xs font-normal text-gray-500">Days</span>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">My Days Present</div>
+              <div className="text-base sm:text-lg font-bold text-foreground mt-0.5 truncate">
+                {summary[0]?.presentDays ?? stats.personalPresentDays ?? 0} <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">Days</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                {summary[0]?.attendanceRate ?? stats.attendanceRateToday ?? 100}% attendance rate
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+                {summary[0]?.attendanceRate ?? stats.attendanceRateToday ?? 100}% rate
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Clock className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">My Leave Days</div>
-              <div className="text-xl font-bold text-amber-700 mt-0.5">
-                {summary[0]?.leaveDays ?? stats.personalLeaveDays ?? 0} <span className="text-xs font-normal text-gray-500">Days</span>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">My Leave Days</div>
+              <div className="text-base sm:text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5 truncate">
+                {summary[0]?.leaveDays ?? stats.personalLeaveDays ?? 0} <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">Days</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                Approved leaves this month
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+                Approved leaves
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Sparkles className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <Sparkles className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">My Overtime Logged</div>
-              <div className="text-xl font-bold text-purple-700 mt-0.5">
-                {summary[0]?.overtimeHours ?? stats.totalOvertimeHours ?? 0} <span className="text-xs font-normal text-gray-500">Hrs</span>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">My Overtime</div>
+              <div className="text-base sm:text-lg font-bold text-purple-600 dark:text-purple-400 mt-0.5 truncate">
+                {summary[0]?.overtimeHours ?? stats.totalOvertimeHours ?? 0} <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">Hrs</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                Extra hours completed
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+                Extra hours
               </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <UserCheck className="w-6 h-6" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <UserCheck className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">Present Today</div>
-              <div className="text-xl font-bold text-gray-900 mt-0.5">
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">Present Today</div>
+              <div className="text-base sm:text-lg font-bold text-foreground mt-0.5 truncate">
                 {stats.presentToday || 8} / {stats.totalEmployees || 8}
               </div>
-              <div className="text-[11px] font-semibold text-emerald-600 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">
                 {stats.attendanceRateToday || 100}% workforce active
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <Calendar className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Calendar className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">On Leave / Away</div>
-              <div className="text-xl font-bold text-gray-900 mt-0.5">
-                {stats.leaveToday || 1} <span className="text-xs font-normal text-gray-500">Staff</span>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">On Leave / Away</div>
+              <div className="text-base sm:text-lg font-bold text-foreground mt-0.5 truncate">
+                {stats.leaveToday || 1} <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">Staff</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
                 Approved leaves & off-duty
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <Clock className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+              <Clock className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">Overtime Logged</div>
-              <div className="text-xl font-bold text-purple-700 mt-0.5">
-                {stats.totalOvertimeHours || 55} <span className="text-xs font-normal text-gray-500">Hrs</span>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">Overtime Logged</div>
+              <div className="text-base sm:text-lg font-bold text-purple-600 dark:text-purple-400 mt-0.5 truncate">
+                {stats.totalOvertimeHours || 55} <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">Hrs</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                Field service & project duties
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+                Field service & duties
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6" />
+          <div className="bg-card p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex items-center gap-2.5 sm:gap-3.5">
+            <div className="size-9 sm:size-11 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+              <ShieldCheck className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-gray-500">ESS Biometric Status</div>
-              <div className="text-sm font-bold text-indigo-900 mt-0.5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Connected & Synced
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">ESS Biometric</div>
+              <div className="text-xs sm:text-sm font-bold text-foreground mt-0.5 flex items-center gap-1.5 truncate">
+                <span className="size-1.5 sm:size-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="truncate">Connected & Synced</span>
               </div>
-              <div className="text-[11px] text-gray-500 mt-0.5">
-                {stats.recordsSynchronized || 280} records · {stats.lastSynchronization}
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground mt-0.5 truncate">
+                {stats.recordsSynchronized || 280} recs · {stats.lastSynchronization}
               </div>
             </div>
           </div>
@@ -561,63 +560,64 @@ export default function Page() {
       {/* ─── WEEKEND POLICY (ADMIN, HR & MANAGER ONLY) ─── */}
       <WeekendPolicyCard currentUser={currentUser} />
 
-      {/* Tabs Switcher */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("records")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "records"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              }`}
-          >
-            <Clock className="w-4 h-4" />
-            {isAdmin ? `Daily Attendance Ledger (${attendanceTotal || attendanceRecords.length})` : `My Attendance Records (${attendanceTotal || attendanceRecords.length})`}
-          </button>
+      {/* Tabs Switcher: Horizontal Scrollable */}
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1 sm:mx-0 sm:px-0 border-b border-border/80">
+        <button
+          type="button"
+          onClick={() => setActiveTab("records")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+            activeTab === "records"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground bg-card border border-border/80 hover:bg-muted/40"
+          }`}
+        >
+          <Clock className="size-3.5 sm:size-4" />
+          <span>{isAdmin ? `Daily Ledger (${attendanceTotal || attendanceRecords.length})` : `My Records (${attendanceTotal || attendanceRecords.length})`}</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("summary")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "summary"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              }`}
-          >
-            <Users className="w-4 h-4" />
-            {isAdmin ? `Monthly Employee Summary (${summary.length || employees.length})` : `My Monthly Summary`}
-          </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("summary")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+            activeTab === "summary"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground bg-card border border-border/80 hover:bg-muted/40"
+          }`}
+        >
+          <Users className="size-3.5 sm:size-4" />
+          <span>{isAdmin ? `Monthly Summary (${summary.length || employees.length})` : `My Summary`}</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("claims")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "claims"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              }`}
-          >
-            <Briefcase className="w-4 h-4" />
-            {isAdmin ? `Expense Claims (${claims.length})` : `My Expense Claims (${claims.length})`}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab("claims")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+            activeTab === "claims"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground bg-card border border-border/80 hover:bg-muted/40"
+          }`}
+        >
+          <Briefcase className="size-3.5 sm:size-4" />
+          <span>{isAdmin ? `Expense Claims (${claims.length})` : `My Claims (${claims.length})`}</span>
+        </button>
       </div>
 
       {/* ─── TAB 1: DAILY ATTENDANCE LEDGER (REAL RECORDS) ─────────────────────────── */}
       {activeTab === "records" && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Filtering Bar */}
-          <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Employee Filter (Admin only) or Assigned Notice (Employee) */}
+          <div className="bg-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Employee Filter */}
               {!isAdmin ? (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
-                  <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span>My Attendance Records: {employees.find(e => e._id === selectedEmployeeFilter)?.fullName || currentUser?.name || "Assigned Profile"}</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
+                  <UserCheck className="size-3.5 text-primary" />
+                  <span className="truncate">My Attendance: {employees.find(e => e._id === selectedEmployeeFilter)?.fullName || currentUser?.name || "Assigned Profile"}</span>
                 </div>
               ) : (
-                <div className="w-48">
+                <div className="w-full sm:w-44">
                   <Select value={selectedEmployeeFilter} onValueChange={setSelectedEmployeeFilter}>
-                    <SelectTrigger className="h-9 text-xs bg-gray-50 border-gray-200">
+                    <SelectTrigger className="h-8.5 text-xs bg-muted/30 border-border">
                       <SelectValue placeholder="All Employees" />
                     </SelectTrigger>
                     <SelectContent>
@@ -633,9 +633,9 @@ export default function Page() {
               )}
 
               {/* Status Filter */}
-              <div className="w-36">
+              <div className="w-full sm:w-36">
                 <Select value={selectedStatusFilter} onValueChange={setSelectedStatusFilter}>
-                  <SelectTrigger className="h-9 text-xs bg-gray-50 border-gray-200">
+                  <SelectTrigger className="h-8.5 text-xs bg-muted/30 border-border">
                     <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -657,7 +657,7 @@ export default function Page() {
                     setSelectedStatusFilter("All");
                     setAttendanceSearch("");
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
+                  className="text-xs text-primary hover:underline font-semibold px-2 py-1 cursor-pointer"
                 >
                   Reset Filters
                 </button>
@@ -665,139 +665,239 @@ export default function Page() {
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full md:w-64">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+            <div className="relative w-full md:w-56">
+              <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5" />
               <Input
                 placeholder="Search date, remarks..."
                 value={attendanceSearch}
                 onChange={(e) => setAttendanceSearch(e.target.value)}
-                className="pl-9 h-9 text-xs bg-gray-50 border-gray-200 rounded-xl"
+                className="pl-8 h-8.5 text-xs bg-muted/30 border-border rounded-xl"
               />
             </div>
           </div>
 
           {/* Real Records Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Attendance Records: Mobile Card View (< md) & Desktop Table View (>= md) */}
+          <div className="bg-card rounded-xl sm:rounded-2xl border border-border/80 shadow-xs overflow-hidden">
             {attendanceLoading ? (
               <div className="py-14 text-center">
-                <RefreshCw className="w-7 h-7 text-blue-600 animate-spin mx-auto mb-2" />
-                <p className="text-xs font-medium text-gray-500">Loading authentic attendance records...</p>
+                <RefreshCw className="size-6 text-primary animate-spin mx-auto mb-2" />
+                <p className="text-xs font-medium text-muted-foreground">Loading authentic attendance records...</p>
               </div>
             ) : attendanceRecords.length === 0 ? (
-              <div className="py-16 text-center text-gray-500">
-                <Clock className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm font-bold text-gray-800">No attendance records found</p>
-                <p className="text-xs text-gray-500 mt-1">Try resetting filters or mark a manual attendance punch.</p>
+              <div className="py-16 text-center text-muted-foreground">
+                <Clock className="size-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm font-bold text-foreground">No attendance records found</p>
+                <p className="text-xs text-muted-foreground mt-1">Try resetting filters or mark a manual attendance punch.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-600 font-semibold uppercase tracking-wider text-[11px]">
-                      <th className="py-3 px-4">Employee</th>
-                      <th className="py-3 px-3">Date</th>
-                      <th className="py-3 px-3">Check In</th>
-                      <th className="py-3 px-3">Check Out</th>
-                      <th className="py-3 px-3">Worked Hours</th>
-                      <th className="py-3 px-3">Overtime</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-3">Source</th>
-                      <th className="py-3 px-4">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {attendanceRecords.map((r) => {
-                      const emp = r.employeeId || {};
-                      const initials = (emp.fullName || "User")
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                        .toUpperCase();
+              <>
+                {/* ─── MOBILE CARD VIEW (Phones < 768px) ─── */}
+                <div className="md:hidden divide-y divide-border/60">
+                  {attendanceRecords.map((r) => {
+                    const emp = r.employeeId || {};
+                    const initials = (emp.fullName || "User")
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .substring(0, 2)
+                      .toUpperCase();
 
-                      return (
-                        <tr key={r._id} className="hover:bg-blue-50/40 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                {initials}
+                    return (
+                      <div key={r._id} className="p-3.5 space-y-2.5 hover:bg-muted/20 transition-colors">
+                        {/* Header: Employee & Status Badge */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="size-8.5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs sm:text-sm text-foreground truncate">
+                                {emp.fullName || "Unknown Staff"}
                               </div>
-                              <div>
-                                <div className="font-bold text-gray-900">{emp.fullName || "Unknown Staff"}</div>
-                                <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                                  <span>{emp.role || "Staff"}</span>
-                                  {emp.employeeCode && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="font-mono">{emp.employeeCode}</span>
-                                    </>
-                                  )}
+                              <div className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                                <span>{emp.role || "Staff"}</span>
+                                {emp.employeeCode && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono font-medium">{emp.employeeCode}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="shrink-0">
+                            {renderStatusPill(r.status)}
+                          </div>
+                        </div>
+
+                        {/* Date & Source Row */}
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 font-medium text-foreground">
+                            <Calendar className="size-3.5 text-muted-foreground" />
+                            <span>{r.date}</span>
+                            <span className="text-muted-foreground font-normal text-[11px]">
+                              ({new Date(r.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" })})
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center text-[10px] bg-muted/70 text-muted-foreground px-2 py-0.5 rounded-md font-medium">
+                            {r.source || "Biometric ESS"}
+                          </span>
+                        </div>
+
+                        {/* Metrics Bar: Check-In, Check-Out, Worked, Overtime */}
+                        <div className="grid grid-cols-4 gap-1.5 bg-muted/40 p-2.5 rounded-xl border border-border/60 text-center">
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-medium text-muted-foreground uppercase">Check In</div>
+                            <div className="font-mono text-xs font-bold text-foreground mt-0.5 truncate">
+                              {formatTime(r.checkIn)}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-medium text-muted-foreground uppercase">Check Out</div>
+                            <div className="font-mono text-xs font-bold text-foreground mt-0.5 truncate">
+                              {formatTime(r.checkOut)}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-medium text-muted-foreground uppercase">Worked</div>
+                            <div className="font-semibold text-xs text-foreground mt-0.5 truncate">
+                              {formatDuration(r.workedMinutes)}
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-medium text-muted-foreground uppercase">Overtime</div>
+                            <div className="text-xs font-bold mt-0.5 truncate">
+                              {r.overtimeHours > 0 ? (
+                                <span className="text-purple-600 dark:text-purple-400 font-bold">+{r.overtimeHours}h</span>
+                              ) : (
+                                <span className="text-muted-foreground font-mono font-normal">—</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Remarks Note (if present) */}
+                        {r.remarks && (
+                          <div className="text-[11px] text-muted-foreground bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40">
+                            <span className="font-semibold text-foreground">Remarks:</span> {r.remarks}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ─── DESKTOP TABLE VIEW (Tablets & Desktops >= 768px) ─── */}
+                <div className="hidden md:block overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                    <thead>
+                      <tr className="bg-muted/40 border-b border-border/80 text-muted-foreground font-semibold uppercase tracking-wider text-[10px] sm:text-[11px]">
+                        <th className="py-2.5 px-3 sm:px-4">Employee</th>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Check In</th>
+                        <th className="py-2.5 px-3">Check Out</th>
+                        <th className="py-2.5 px-3">Worked Hours</th>
+                        <th className="py-2.5 px-3">Overtime</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Source</th>
+                        <th className="py-2.5 px-3 sm:px-4">Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {attendanceRecords.map((r) => {
+                        const emp = r.employeeId || {};
+                        const initials = (emp.fullName || "User")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .substring(0, 2)
+                          .toUpperCase();
+
+                        return (
+                          <tr key={r._id} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-2.5 px-3 sm:px-4">
+                              <div className="flex items-center gap-2 sm:gap-2.5">
+                                <div className="size-7 sm:size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">
+                                  {initials}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-foreground truncate">{emp.fullName || "Unknown Staff"}</div>
+                                  <div className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1">
+                                    <span>{emp.role || "Staff"}</span>
+                                    {emp.employeeCode && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="font-mono">{emp.employeeCode}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <div className="font-semibold text-gray-800">{r.date}</div>
-                            <div className="text-[10px] text-gray-400">
-                              {new Date(r.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" })}
-                            </div>
-                          </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <div className="font-semibold text-foreground">{r.date}</div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {new Date(r.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short" })}
+                              </div>
+                            </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="font-mono text-gray-700 font-medium">
-                              {formatTime(r.checkIn)}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="font-mono text-gray-700 font-medium">
-                              {formatTime(r.checkOut)}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="font-semibold text-gray-800">
-                              {formatDuration(r.workedMinutes)}
-                            </span>
-                          </td>
-
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {r.overtimeHours > 0 ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                                +{r.overtimeHours}h OT
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className="font-mono text-foreground font-medium">
+                                {formatTime(r.checkIn)}
                               </span>
-                            ) : (
-                              <span className="text-gray-400 font-mono">—</span>
-                            )}
-                          </td>
+                            </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            {renderStatusPill(r.status)}
-                          </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className="font-mono text-foreground font-medium">
+                                {formatTime(r.checkOut)}
+                              </span>
+                            </td>
 
-                          <td className="py-3 px-3 whitespace-nowrap text-gray-600">
-                            <span className="inline-flex items-center gap-1 text-[11px] bg-gray-100 px-2 py-0.5 rounded-md">
-                              {r.source || "Biometric ESS"}
-                            </span>
-                          </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <span className="font-semibold text-foreground">
+                                {formatDuration(r.workedMinutes)}
+                              </span>
+                            </td>
 
-                          <td className="py-3 px-4 text-gray-500 max-w-xs truncate" title={r.remarks || ""}>
-                            {r.remarks || "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              {r.overtimeHours > 0 ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                                  +{r.overtimeHours}h OT
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground font-mono">—</span>
+                              )}
+                            </td>
+
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              {renderStatusPill(r.status)}
+                            </td>
+
+                            <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground">
+                              <span className="inline-flex items-center gap-1 text-[10px] bg-muted px-2 py-0.5 rounded-md">
+                                {r.source || "Biometric ESS"}
+                              </span>
+                            </td>
+
+                            <td className="py-2.5 px-3 sm:px-4 text-muted-foreground max-w-xs truncate" title={r.remarks || ""}>
+                              {r.remarks || "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {/* Pagination Controls */}
-            <div className="p-3.5 bg-gray-50/80 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
+            <div className="p-3 bg-muted/30 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
               <div>
-                Showing page <span className="font-bold text-gray-900">{attendancePage}</span> of{" "}
-                <span className="font-bold text-gray-900">{attendanceTotalPages || 1}</span> ({attendanceTotal} total records)
+                Showing page <span className="font-bold text-foreground">{attendancePage}</span> of{" "}
+                <span className="font-bold text-foreground">{attendanceTotalPages || 1}</span> ({attendanceTotal} total records)
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -805,18 +905,18 @@ export default function Page() {
                   size="sm"
                   disabled={attendancePage <= 1 || attendanceLoading}
                   onClick={() => fetchAttendance(attendancePage - 1)}
-                  className="h-8 text-xs gap-1 bg-white"
+                  className="h-8 text-xs gap-1 bg-card cursor-pointer"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Previous
+                  <ChevronLeft className="size-3.5" /> Previous
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={attendancePage >= attendanceTotalPages || attendanceLoading}
                   onClick={() => fetchAttendance(attendancePage + 1)}
-                  className="h-8 text-xs gap-1 bg-white"
+                  className="h-8 text-xs gap-1 bg-card cursor-pointer"
                 >
-                  Next <ChevronRight className="w-3.5 h-3.5" />
+                  Next <ChevronRight className="size-3.5" />
                 </Button>
               </div>
             </div>
@@ -827,7 +927,7 @@ export default function Page() {
       {/* ─── TAB 2: MONTHLY EMPLOYEE SUMMARY ──────────────────────────────────────── */}
       {activeTab === "summary" && (
         <div className="space-y-4">
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
             {summary.map((e) => {
               const emp = e.employee || {};
               const initials = (emp.fullName || "User")
@@ -840,46 +940,46 @@ export default function Page() {
               return (
                 <div
                   key={emp.id || emp._id}
-                  className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all space-y-3"
+                  className="bg-card rounded-xl sm:rounded-2xl border border-border/80 p-3.5 sm:p-4 shadow-xs hover:shadow-sm transition-all space-y-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0">
+                      <div className="size-9 sm:size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs sm:text-sm shrink-0">
                         {initials}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900">{emp.fullName}</h4>
-                        <p className="text-xs text-gray-500">{emp.role}</p>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-foreground truncate">{emp.fullName}</h4>
+                        <p className="text-xs text-muted-foreground truncate">{emp.role}</p>
                       </div>
                     </div>
                     {emp.employeeCode && (
-                      <span className="text-[10px] font-mono font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-mono font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded">
                         {emp.employeeCode}
                       </span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center py-2.5 bg-gray-50/70 rounded-xl border border-gray-100">
+                  <div className="grid grid-cols-3 gap-2 text-center py-2 bg-muted/40 rounded-xl border border-border/60">
                     <div>
-                      <div className="text-[10px] uppercase font-semibold text-gray-500">Present</div>
-                      <div className="text-sm font-extrabold text-emerald-600 mt-0.5">{e.presentDays}d</div>
+                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Present</div>
+                      <div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{e.presentDays}d</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-semibold text-gray-500">Leave</div>
-                      <div className="text-sm font-extrabold text-blue-600 mt-0.5">{e.leaveDays}d</div>
+                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Leave</div>
+                      <div className="text-sm font-extrabold text-blue-600 dark:text-blue-400 mt-0.5">{e.leaveDays}d</div>
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase font-semibold text-gray-500">Overtime</div>
-                      <div className="text-sm font-extrabold text-purple-600 mt-0.5">{e.overtimeHours}h</div>
+                      <div className="text-[10px] uppercase font-semibold text-muted-foreground">Overtime</div>
+                      <div className="text-sm font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">{e.overtimeHours}h</div>
                     </div>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500 text-[11px]">Attendance Rate</span>
-                      <span className="font-bold text-gray-800 text-[11px]">{e.attendanceRate || 95}%</span>
+                      <span className="text-muted-foreground text-[11px]">Attendance Rate</span>
+                      <span className="font-bold text-foreground text-[11px]">{e.attendanceRate || 95}%</span>
                     </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, e.attendanceRate || 95)}%` }}
@@ -893,7 +993,7 @@ export default function Page() {
                       setSelectedEmployeeFilter(emp.id || emp._id);
                       setActiveTab("records");
                     }}
-                    className="w-full py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl text-center transition-colors"
+                    className="w-full py-1.5 px-3 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer"
                   >
                     View Daily Records →
                   </button>
@@ -906,41 +1006,77 @@ export default function Page() {
 
       {/* ─── TAB 3: EXPENSE CLAIMS ─────────────────────────────────────────────────── */}
       {activeTab === "claims" && (
-        <div className="space-y-4">
-          <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between gap-4">
-            <h3 className="text-sm font-bold text-gray-900">Workforce Expense Claims & Travel Allowances</h3>
-            <div className="flex gap-2">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="bg-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-border/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-foreground">Workforce Expense Claims</h3>
+            <div className="flex items-center gap-2">
               <Input
                 placeholder="Search claims..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-56 h-9 text-xs bg-gray-50"
+                className="w-full sm:w-48 h-8.5 text-xs bg-muted/30 border-border"
               />
-              <Button variant="outline" size="sm" onClick={handleExportClaims} className="text-xs h-9">
+              <Button variant="outline" size="sm" onClick={handleExportClaims} className="text-xs h-8.5 bg-card cursor-pointer shrink-0">
                 Export Claims
               </Button>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-card rounded-xl sm:rounded-2xl border border-border/80 shadow-xs overflow-hidden">
             {claimsLoading && claims.length === 0 ? (
               <div className="py-10 text-center text-muted-foreground text-xs">Loading expense claims...</div>
             ) : (
               <>
-                <DataTable
-                  rows={claims}
-                  columns={[
-                    { header: "Claim ID", cell: (r) => <span className="font-mono font-bold text-xs">{r.claimId}</span> },
-                    { header: "Employee", cell: (r) => <span className="font-semibold text-xs text-gray-800">{r.employeeId?.fullName || "Staff"}</span> },
-                    { header: "Date", cell: (r) => <span className="text-xs">{fmtDate(r.date)}</span> },
-                    { header: "Category", cell: (r) => <span className="text-xs">{r.category}</span> },
-                    { header: "Amount", cell: (r) => <span className="font-bold text-xs text-gray-900">{inr(r.amount)}</span> },
-                    { header: "Project", cell: (r) => <span className="text-xs text-gray-600">{r.project || "—"}</span> },
-                    { header: "Status", cell: (r) => <StatusBadge value={r.status} /> },
-                  ]}
-                />
+                {/* Mobile Claims Cards (< md) */}
+                <div className="md:hidden divide-y divide-border/60">
+                  {claims.map((c) => (
+                    <div key={c._id || c.claimId} className="p-3.5 space-y-2 hover:bg-muted/20 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-mono font-bold text-xs text-primary">{c.claimId}</span>
+                          <div className="font-bold text-xs sm:text-sm text-foreground mt-0.5">
+                            {c.employeeId?.fullName || "Staff"}
+                          </div>
+                        </div>
+                        <StatusBadge value={c.status} />
+                      </div>
 
-                <div className="p-3.5 bg-gray-50/80 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+                      <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-2 rounded-xl border border-border/50">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">Category</span>
+                          <span className="font-medium text-foreground">{c.category}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">Amount</span>
+                          <span className="font-bold text-foreground">{inr(c.amount)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                        <span>Date: {fmtDate(c.date)}</span>
+                        <span>Project: {c.project || "—"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Claims Table (>= md) */}
+                <div className="hidden md:block">
+                  <DataTable
+                    rows={claims}
+                    columns={[
+                      { header: "Claim ID", cell: (r) => <span className="font-mono font-bold text-xs">{r.claimId}</span> },
+                      { header: "Employee", cell: (r) => <span className="font-semibold text-xs text-foreground">{r.employeeId?.fullName || "Staff"}</span> },
+                      { header: "Date", cell: (r) => <span className="text-xs">{fmtDate(r.date)}</span> },
+                      { header: "Category", cell: (r) => <span className="text-xs">{r.category}</span> },
+                      { header: "Amount", cell: (r) => <span className="font-bold text-xs text-foreground">{inr(r.amount)}</span> },
+                      { header: "Project", cell: (r) => <span className="text-xs text-muted-foreground">{r.project || "—"}</span> },
+                      { header: "Status", cell: (r) => <StatusBadge value={r.status} /> },
+                    ]}
+                  />
+                </div>
+
+                <div className="p-3 bg-muted/30 border-t border-border/80 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-muted-foreground">
                   <span>Page {claimsPage} of {claimsTotalPages || 1}</span>
                   <div className="flex gap-2">
                     <Button
@@ -948,7 +1084,7 @@ export default function Page() {
                       size="sm"
                       disabled={claimsPage <= 1}
                       onClick={() => fetchClaims(claimsPage - 1, searchTerm)}
-                      className="h-8 text-xs"
+                      className="h-8 text-xs bg-card"
                     >
                       Previous
                     </Button>
@@ -957,7 +1093,7 @@ export default function Page() {
                       size="sm"
                       disabled={claimsPage >= claimsTotalPages}
                       onClick={() => fetchClaims(claimsPage + 1, searchTerm)}
-                      className="h-8 text-xs"
+                      className="h-8 text-xs bg-card"
                     >
                       Next
                     </Button>
@@ -971,7 +1107,7 @@ export default function Page() {
 
       {/* ─── MANUAL ATTENDANCE DIALOG ────────────────────────────────────────────── */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[94vw] max-w-[425px] p-4 sm:p-6 rounded-2xl">
           <DialogHeader>
             <DialogTitle>Mark Attendance Record</DialogTitle>
           </DialogHeader>
@@ -1021,7 +1157,7 @@ export default function Page() {
               <Label htmlFor="remarks">Remarks</Label>
               <Input id="remarks" name="remarks" value={formData.remarks} onChange={handleChange} placeholder="e.g. Field assignment at site" />
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={isCreating}>{isCreating ? "Saving..." : "Save Attendance"}</Button>
             </DialogFooter>

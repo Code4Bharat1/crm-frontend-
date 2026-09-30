@@ -143,19 +143,81 @@ export default function PaymentsPage() {
     }
   };
 
+  const renderMobileCard = (r) => {
+    return (
+      <div className="p-3.5 space-y-2.5 hover:bg-muted/30 transition-colors">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="font-bold text-sm text-blue-600 dark:text-blue-400 font-mono">
+              {r.receiptId}
+            </span>
+            <p className="text-xs font-semibold text-foreground truncate mt-0.5">
+              {r.customerName}
+            </p>
+            <Link
+              href={r.link}
+              className="text-[11px] text-muted-foreground hover:text-foreground font-mono hover:underline inline-flex items-center gap-1 mt-0.5"
+            >
+              <span>{r.docType}:</span>
+              <strong className="text-foreground">{r.docNo}</strong>
+            </Link>
+          </div>
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <StatusBadge value={r.status} />
+            <span className="text-[11px] text-muted-foreground">{fmtDate(r.date)}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/40 p-2.5 text-xs border border-border/40">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Amount Recd
+            </span>
+            <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400 text-xs">
+              {fmtINR(r.amount)}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Mode
+            </span>
+            <span className="font-medium text-foreground text-xs">{r.mode}</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">
+              Reference
+            </span>
+            <span className="font-mono text-muted-foreground text-xs truncate block">
+              {r.reference || "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const columns = [
     {
       header: "Receipt / Ref",
-      cell: (r) => <span className="font-mono text-xs font-bold text-blue-600">{r.receiptId}</span>,
+      cell: (r) => (
+        <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+          {r.receiptId}
+        </span>
+      ),
     },
     {
       header: "Customer",
-      cell: (r) => <span className="font-semibold text-gray-900">{r.customerName}</span>,
+      cell: (r) => (
+        <div className="font-semibold text-foreground text-xs sm:text-sm truncate max-w-[180px] lg:max-w-xs">{r.customerName}</div>
+      ),
     },
     {
       header: "Document",
       cell: (r) => (
-        <Link href={r.link} className="text-xs font-bold hover:underline text-indigo-600 flex items-center gap-1">
+        <Link
+          href={r.link}
+          className="text-xs font-bold hover:underline text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 font-mono whitespace-nowrap"
+        >
           <span>{r.docType}:</span>
           <span>{r.docNo}</span>
         </Link>
@@ -163,19 +225,35 @@ export default function PaymentsPage() {
     },
     {
       header: "Date",
-      cell: (r) => fmtDate(r.date),
+      cell: (r) => (
+        <span className="text-xs text-foreground whitespace-nowrap font-medium">
+          {fmtDate(r.date)}
+        </span>
+      ),
     },
     {
       header: "Amount",
-      cell: (r) => <span className="font-bold text-emerald-600 text-sm">{fmtINR(r.amount)}</span>,
+      cell: (r) => (
+        <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm whitespace-nowrap">
+          {fmtINR(r.amount)}
+        </span>
+      ),
     },
     {
       header: "Mode",
-      cell: (r) => <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-700 font-medium">{r.mode}</span>,
+      cell: (r) => (
+        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground border border-border/40 whitespace-nowrap">
+          {r.mode}
+        </span>
+      ),
     },
     {
       header: "Reference / UTR",
-      cell: (r) => <span className="font-mono text-xs text-gray-500">{r.reference}</span>,
+      cell: (r) => (
+        <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+          {r.reference || "—"}
+        </span>
+      ),
     },
     {
       header: "Status",
@@ -187,7 +265,7 @@ export default function PaymentsPage() {
     <>
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl text-white text-sm font-semibold transition-all ${
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-semibold transition-all ${
             toast.type === "error" ? "bg-red-600" : "bg-emerald-600"
           }`}
         >
@@ -197,22 +275,22 @@ export default function PaymentsPage() {
 
       {/* Record Payment Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between pb-3 border-b mb-4">
-              <h3 className="font-bold text-lg text-gray-900">Record New Payment Receipt</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-5 sm:p-6 text-foreground animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
+              <h3 className="font-bold text-base sm:text-lg text-foreground">Record New Payment Receipt</h3>
+              <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
             </div>
 
             <form onSubmit={handleRecordPayment} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Target Document *</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">Target Document *</label>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <button
                     type="button"
                     onClick={() => setSelectedTarget({ type: "invoice", id: pendingInvoices[0]?.invoiceNo || "" })}
                     className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${
-                      selectedTarget.type === "invoice" ? "bg-red-50 border-red-500 text-red-700 shadow-sm" : "bg-gray-50 text-gray-600"
+                      selectedTarget.type === "invoice" ? "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300 shadow-2xs" : "bg-muted/40 border-border text-muted-foreground"
                     }`}
                   >
                     Tax Invoice ({pendingInvoices.length} Pending)
@@ -221,7 +299,7 @@ export default function PaymentsPage() {
                     type="button"
                     onClick={() => setSelectedTarget({ type: "proforma", id: proformas[0]?.proformaNo || "" })}
                     className={`py-2 px-3 text-xs font-bold rounded-lg border transition-all ${
-                      selectedTarget.type === "proforma" ? "bg-purple-50 border-purple-500 text-purple-700 shadow-sm" : "bg-gray-50 text-gray-600"
+                      selectedTarget.type === "proforma" ? "bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300 shadow-2xs" : "bg-muted/40 border-border text-muted-foreground"
                     }`}
                   >
                     Proforma Advance ({proformas.length})
@@ -231,7 +309,7 @@ export default function PaymentsPage() {
                 {selectedTarget.type === "invoice" ? (
                   <select
                     required
-                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-blue-500"
                     value={selectedTarget.id}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -250,7 +328,7 @@ export default function PaymentsPage() {
                 ) : (
                   <select
                     required
-                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-purple-500"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-purple-500"
                     value={selectedTarget.id}
                     onChange={(e) => {
                       const id = e.target.value;
@@ -270,12 +348,12 @@ export default function PaymentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Receipt Amount (₹) *</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">Receipt Amount (₹) *</label>
                 <input
                   type="number"
                   required
                   placeholder="e.g. 25000"
-                  className="w-full border rounded-lg px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-border bg-background text-foreground rounded-lg px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
                 />
@@ -283,9 +361,9 @@ export default function PaymentsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Payment Mode</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Payment Mode</label>
                   <select
-                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     value={paymentForm.mode}
                     onChange={(e) => setPaymentForm(f => ({ ...f, mode: e.target.value }))}
                   >
@@ -293,11 +371,11 @@ export default function PaymentsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reference / UTR No.</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Reference / UTR No.</label>
                   <input
                     type="text"
                     placeholder="e.g. HDFC12345678"
-                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
+                    className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono"
                     value={paymentForm.reference}
                     onChange={(e) => setPaymentForm(f => ({ ...f, reference: e.target.value }))}
                   />
@@ -305,28 +383,28 @@ export default function PaymentsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">Notes</label>
                 <input
                   type="text"
                   placeholder="Optional remarks"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm"
                   value={paymentForm.notes}
                   onChange={(e) => setPaymentForm(f => ({ ...f, notes: e.target.value }))}
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-xs font-medium border rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-xs font-medium border border-border rounded-lg hover:bg-muted text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg shadow disabled:opacity-60"
+                  className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs disabled:opacity-60"
                 >
                   {saving ? "Recording..." : "Record Payment Receipt"}
                 </button>
@@ -354,14 +432,14 @@ export default function PaymentsPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-5">
         <Kpi label="Total Receipts" value={allReceipts.length} />
         <Kpi label="Total Collected" value={fmtINR(totalCollected)} tone="success" />
         <Kpi label="Pending Invoices" value={pendingInvoices.length} tone="warning" />
         <Kpi label="Total Proformas" value={proformas.length} tone="accent" />
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full" />
@@ -370,6 +448,7 @@ export default function PaymentsPage() {
           <DataTable
             rows={allReceipts}
             columns={columns}
+            mobileCard={renderMobileCard}
             searchKeys={["receiptId", "customerName", "docNo", "reference", "mode"]}
           />
         )}

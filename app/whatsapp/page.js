@@ -469,8 +469,11 @@ export default function WhatsAppPage() {
                 <UserPlus className="size-4 text-emerald-600" />
                 <span>Create Lead from Chat</span>
               </Button>
-              <Link href="/quotations" className="block w-full">
-                <Button className="w-full justify-start cursor-pointer" variant="outline">
+              <Link
+                href={active ? `/quotations?action=create&customerName=${encodeURIComponent(active.name || "")}&phone=${encodeURIComponent(active.phone || "")}` : "/quotations"}
+                className="block w-full"
+              >
+                <Button className="w-full justify-start cursor-pointer" variant="outline" disabled={!active}>
                   <span>Attach to Quotation</span>
                 </Button>
               </Link>

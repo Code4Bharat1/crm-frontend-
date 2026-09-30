@@ -257,7 +257,7 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
             placeholder="Filter menu items…"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full h-10 pl-9.5 pr-8 text-sm rounded-xl bg-white/10 hover:bg-white/[0.14] border border-white/15 text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/50 focus:bg-white/15 transition-all shadow-xs"
+            className="w-full h-10 pl-10 pr-9 text-sm rounded-xl bg-white/10 hover:bg-white/[0.14] border border-white/15 text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/50 focus:bg-white/15 transition-all shadow-xs"
           />
           {filterQuery && (
             <button

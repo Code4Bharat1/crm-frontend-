@@ -16,6 +16,7 @@ import { getCustomers, getProducts, getSerialNumbers } from "@/services/document
 import { getEmployees } from "@/services/employeeService";
 import { getNotifications, markNotificationAsRead } from "@/services/notificationService";
 import { PageHeader, Kpi, StatusBadge } from "@/components/crm-ui";
+import { Button } from "@/components/ui/button";
 import {
   Wrench,
   Plus,

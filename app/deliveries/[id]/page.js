@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getDeliveryNote, getCompany, markDelivered, createInvoiceFromDN, fmtDate } from "@/services/documentService";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { PageHeader, StatusBadge } from "@/components/crm-ui";
+import { ConvertNotificationModal } from "@/components/ConvertNotificationModal";
 import Link from "next/link";
 
 function InfoCard({ label, children }) {
@@ -25,6 +26,7 @@ export default function DeliveryNoteDetailPage() {
   const [receivedBy, setReceivedBy] = useState("");
   const [showDeliver, setShowDeliver] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showConvertModal, setShowConvertModal] = useState(false);
 
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
   
@@ -53,11 +55,14 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
-  const handleConvertToInvoice = async () => {
+  const handleConvertToInvoice = () => {
+    setShowConvertModal(true);
+  };
+
+  const handleConfirmConvert = async () => {
     try {
       const inv = await createInvoiceFromDN(id);
-      showToast(`Tax Invoice ${inv.invoiceNo} generated!`);
-      load();
+      showToast(`Tax Invoice ${inv.invoiceNo} generated successfully ✓`);
       router.push(`/invoices/${inv.invoiceNo}`);
     } catch (e) {
       showToast(e.message, "error");
@@ -148,6 +153,19 @@ export default function DeliveryNoteDetailPage() {
             <DocumentPrintView doc={doc} type="Delivery Note" company={company} embedded={true} />
           </div>
         </div>
+      )}
+
+      {showConvertModal && (
+        <ConvertNotificationModal
+          isOpen={showConvertModal}
+          onClose={() => setShowConvertModal(false)}
+          title="Convert to Sales Invoice?"
+          sourceDocNo={doc.dnNo}
+          customerName={doc.customer?.name}
+          targetType="Sales Invoice"
+          amount={doc.grandTotal || (doc.items?.reduce((s, i) => s + (i.totalAmount || 0), 0))}
+          onConfirm={handleConfirmConvert}
+        />
       )}
     </>
   );

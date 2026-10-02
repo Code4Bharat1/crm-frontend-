@@ -27,7 +27,6 @@ import {
   BarChart3,
   Lock,
   ScrollText,
-  Server,
   Search,
   Plus,
   Menu,
@@ -125,11 +124,9 @@ const MODULE_ICONS = {
   company_settings: Building2,
   users_roles: Lock,
   audit_logs: ScrollText,
-  deployment: Server,
 };
 
 const GROUP_META = {
-  "Overview": { icon: LayoutDashboard, short: "Overview" },
   "CRM": { icon: Sparkles, short: "CRM" },
   "Sales": { icon: Receipt, short: "Sales" },
   "Products & Inventory": { icon: Boxes, short: "Inventory" },
@@ -173,11 +170,11 @@ const getFilteredNav = (currentUser, customPerms) => {
 
   const sidebarPermissions = customPerms || getSidebarPermissions() || {};
 
-  // For non-admin employees, show strictly what Admin enabled + dashboard
+  // For non-admin employees, show strictly what Admin enabled
   return NAV
     .map((group) => ({
       ...group,
-      items: group.items.filter((it) => it.key === "dashboard" || Boolean(sidebarPermissions[it.key])),
+      items: group.items.filter((it) => Boolean(sidebarPermissions[it.key])),
     }))
     .filter((group) => group.items.length > 0);
 };
@@ -186,6 +183,13 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
   const pathname = usePathname();
   const filteredNav = useMemo(() => getFilteredNav(user, permissions), [user, permissions]);
   const [filterQuery, setFilterQuery] = useState("");
+
+  const isDashboardActive = pathname === "/";
+  const isDashboardVisible = useMemo(() => {
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return true;
+    return "dashboard".includes(q) || "home".includes(q);
+  }, [filterQuery]);
 
   // Determine which category group contains the current active route
   const activeGroup = useMemo(() => {
@@ -239,8 +243,8 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
   }, [filteredNav, filterQuery]);
 
   const totalFilteredCount = useMemo(() => {
-    return displayedNav.reduce((acc, g) => acc + g.items.length, 0);
-  }, [displayedNav]);
+    return (isDashboardVisible ? 1 : 0) + displayedNav.reduce((acc, g) => acc + g.items.length, 0);
+  }, [displayedNav, isDashboardVisible]);
 
   const allOpen = useMemo(() => {
     return filteredNav.length > 0 && filteredNav.every((g) => expandedGroups[g.group]);
@@ -271,9 +275,33 @@ function SidebarNav({ onNavigate, user, permissions, isMobile = false }) {
         </div>
       </div>
 
-      {/* Category Dropdowns List */}
+      {/* Navigation List */}
       <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-2.5 space-y-1.5">
-        {displayedNav.length === 0 ? (
+        {/* Direct Standalone Dashboard Link */}
+        {isDashboardVisible && (
+          <div className="mb-1">
+            <Link
+              href="/"
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer min-h-[40px]",
+                isDashboardActive
+                  ? "bg-accent text-accent-foreground font-bold shadow-sm ring-1 ring-accent/30"
+                  : "text-sidebar-foreground/85 hover:bg-white/10 hover:text-sidebar-foreground active:scale-[0.99]"
+              )}
+            >
+              <LayoutDashboard
+                className={cn(
+                  "size-4 shrink-0 transition-colors",
+                  isDashboardActive ? "text-accent-foreground" : "text-sidebar-foreground/70"
+                )}
+              />
+              <span className="truncate flex-1">Dashboard</span>
+            </Link>
+          </div>
+        )}
+
+        {displayedNav.length === 0 && !isDashboardVisible ? (
           <div className="py-8 px-4 text-center">
             <p className="text-xs text-sidebar-foreground/60">No modules matching &ldquo;{filterQuery}&rdquo;</p>
             <button
@@ -501,7 +529,14 @@ function AppShell({ children }) {
   // Extract all navigable sidebar pages according to user access (HOOKS MUST PRECEDE EARLY RETURNS)
   const allNavPages = useMemo(() => {
     const nav = getFilteredNav(user, sidebarPerms);
-    const pages = [];
+    const pages = [
+      {
+        label: "Dashboard",
+        href: "/",
+        group: "Dashboard",
+        icon: LayoutDashboard,
+      },
+    ];
     nav.forEach((group) => {
       group.items.forEach((item) => {
         pages.push({

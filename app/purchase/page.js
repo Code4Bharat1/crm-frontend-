@@ -614,6 +614,7 @@ export default function PurchaseOrdersPage() {
                 <LineItemsEditor
                   items={form.items}
                   isInterState={form.isInterState}
+                  allowOutOfStock={true}
                   onChange={(items) =>
                     setForm((f) => ({ ...f, items: items.map((i) => calcItem(i, f.isInterState)) }))
                   }
@@ -715,10 +716,10 @@ export default function PurchaseOrdersPage() {
         actions={
           <Button
             onClick={openCreate}
-            className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
+            className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 h-9 px-4 rounded-xl cursor-pointer"
           >
             <Plus className="size-4" />
-            <span>+ New Purchase Order</span>
+            <span>New Purchase Order</span>
           </Button>
         }
       />

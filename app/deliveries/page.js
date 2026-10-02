@@ -11,6 +11,7 @@ import { fetchApi } from "@/services/api";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { LineItemsEditor } from "@/components/LineItemsEditor";
+import { ConvertNotificationModal } from "@/components/ConvertNotificationModal";
 import {
   Printer,
   Pencil,
@@ -19,7 +20,8 @@ import {
   Trash2,
   FileText,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from "lucide-react";
 
 const emptyForm = {
@@ -126,10 +128,18 @@ export default function DeliveriesPage() {
     }
   };
 
-  const handleConvertToInvoice = async (d) => {
+  const [convertModal, setConvertModal] = useState(null);
+
+  const handleConvertToInvoice = (d) => {
+    setConvertModal(d);
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!convertModal) return;
+    const d = convertModal;
     try {
       const inv = await createInvoiceFromDN(d.dnNo || d._id);
-      showToast(`Tax Invoice ${inv.invoiceNo} created from ${d.dnNo}!`);
+      showToast(`Tax Invoice ${inv.invoiceNo} created successfully ✓`);
       load();
       router.push(`/invoices/${inv.invoiceNo}`);
     } catch (e) {
@@ -395,32 +405,32 @@ export default function DeliveriesPage() {
 
       {/* Post-Delivery Prompt to Generate Invoice */}
       {postDeliveryModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl text-center animate-in fade-in zoom-in duration-150">
-            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3 border border-emerald-500/20">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 max-w-sm sm:max-w-md w-full shadow-2xl text-center animate-in fade-in zoom-in duration-150">
+            <div className="w-14 h-14 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3.5 border border-emerald-500/20">
               ✓
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-foreground mb-1">Delivery Confirmed!</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-              <strong className="text-foreground">{postDeliveryModal.dnNo}</strong> has been marked as Delivered to{" "}
-              <strong className="text-foreground">{postDeliveryModal.customer?.name}</strong>.
+            <h3 className="text-lg sm:text-xl font-bold text-foreground mb-1.5">Delivery Confirmed!</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-5 leading-relaxed">
+              <strong className="text-foreground font-bold">{postDeliveryModal.dnNo}</strong> has been successfully marked as Delivered to{" "}
+              <strong className="text-foreground font-bold">{postDeliveryModal.customer?.name}</strong>.
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPostDeliveryModal(null)}
+                className="flex-1 py-2.5 sm:py-3 px-4 border border-border text-foreground rounded-xl text-xs sm:text-sm font-semibold hover:bg-muted transition-all cursor-pointer"
+              >
+                Keep Delivered
+              </button>
               <button
                 onClick={() => {
                   const d = postDeliveryModal;
                   setPostDeliveryModal(null);
                   handleConvertToInvoice(d);
                 }}
-                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 sm:py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                🧾 Convert to Tax Invoice Now
-              </button>
-              <button
-                onClick={() => setPostDeliveryModal(null)}
-                className="w-full py-2 px-4 border border-border text-foreground rounded-xl text-xs sm:text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Keep as Delivered
+                🧾 Create Invoice
               </button>
             </div>
           </div>
@@ -429,17 +439,50 @@ export default function DeliveriesPage() {
 
       {/* Mark Delivered Modal */}
       {deliverModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 w-[94vw] max-w-sm shadow-2xl">
-            <h3 className="font-bold text-base sm:text-lg mb-1 text-foreground">Mark as Delivered</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4 truncate">{deliverModal.dnNo} — {deliverModal.customer?.name}</p>
-            <div className="mb-4">
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Received By</label>
-              <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={receivedBy} onChange={e => setReceivedBy(e.target.value)} placeholder="Name of receiver" autoFocus />
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 w-[94vw] max-w-sm sm:max-w-md shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-14 h-14 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3.5 border border-amber-500/20">
+              🚚
             </div>
-            <div className="flex gap-2 sm:gap-3">
-              <button onClick={() => setDeliverModal(null)} className="flex-1 border border-border rounded-lg py-2 text-xs sm:text-sm hover:bg-muted text-foreground">Cancel</button>
-              <button onClick={handleMarkDelivered} className="flex-1 bg-emerald-600 text-white rounded-lg py-2 text-xs sm:text-sm font-semibold hover:bg-emerald-700 shadow-xs">Confirm</button>
+            <h3 className="font-bold text-lg sm:text-xl text-foreground text-center mb-1.5">Mark as Delivered?</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center mb-5 leading-relaxed">
+              Confirm delivery for Delivery Note <strong className="text-foreground font-bold">{deliverModal.dnNo}</strong>
+            </p>
+
+            <div className="bg-muted/40 border border-border/70 rounded-2xl p-4 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Customer:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{deliverModal.customer?.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">SO Reference:</span>
+                <span className="font-mono font-semibold text-foreground">{deliverModal.soRef || "—"}</span>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Received By (Person / Gate Stamp)</label>
+              <input
+                className="w-full border border-border bg-background text-foreground rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500"
+                value={receivedBy}
+                onChange={e => setReceivedBy(e.target.value)}
+                placeholder="Name of receiver or signee"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeliverModal(null)}
+                className="flex-1 py-2.5 sm:py-3 px-4 border border-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-muted text-foreground transition-all cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={handleMarkDelivered}
+                className="flex-1 py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Yes, Confirm Delivery
+              </button>
             </div>
           </div>
         </div>
@@ -518,9 +561,10 @@ export default function DeliveriesPage() {
               setEditingId(null);
               setShowForm(true);
             }}
-            className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white h-9 px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
           >
-            + New Delivery Note
+            <Plus className="size-4" />
+            <span>New Delivery Note</span>
           </button>
         }
       />
@@ -540,6 +584,19 @@ export default function DeliveriesPage() {
           columns={columns}
           mobileCard={renderMobileCard}
           searchKeys={["dnNo", "soRef", "customer.name", "status", "lrNumber", "invoiceRef"]}
+        />
+      )}
+
+      {convertModal && (
+        <ConvertNotificationModal
+          isOpen={Boolean(convertModal)}
+          onClose={() => setConvertModal(null)}
+          title="Convert to Sales Invoice?"
+          sourceDocNo={convertModal.dnNo}
+          customerName={convertModal.customer?.name}
+          targetType="Sales Invoice"
+          amount={convertModal.grandTotal || (convertModal.items?.reduce((s, i) => s + (i.totalAmount || 0), 0))}
+          onConfirm={handleConfirmConvert}
         />
       )}
     </>

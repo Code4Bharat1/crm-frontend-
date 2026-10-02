@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Flame,
   UserPlus,
@@ -16,10 +17,14 @@ import {
   User,
   ExternalLink,
   Sparkles,
-  Phone
+  Phone,
+  Eye,
+  Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchApi } from "@/services/api";
+import { getQuotations, getCompany, fmtINR } from "@/services/documentService";
+import { DocumentPrintView } from "@/components/DocumentPrintView";
 
 import { Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
@@ -37,7 +42,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, LEAD_STAGES } from "@/lib/crm-data";
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [company, setCompany] = useState(null);
+  const [viewingQuotation, setViewingQuotation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
@@ -52,14 +61,107 @@ export default function LeadsPage() {
 
   const loadLeads = useCallback(async () => {
     try {
-      const data = await fetchApi("/sales/leads");
-      setLeads(Array.isArray(data) ? data : []);
+      const [leadsData, quotesData, compData] = await Promise.all([
+        fetchApi("/sales/leads"),
+        getQuotations().catch(() => []),
+        getCompany().catch(() => null),
+      ]);
+      setLeads(Array.isArray(leadsData) ? leadsData : []);
+      setQuotations(Array.isArray(quotesData) ? quotesData : []);
+      setCompany(compData);
     } catch (err) {
       console.error("Error loading leads:", err);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const leadQuotationMap = useMemo(() => {
+    const map = {};
+    if (!quotations.length || !leads.length) return map;
+
+    leads.forEach((l) => {
+      const cleanName = (l.customerName || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^["'\s]+|["'\s]+$/g, "");
+      const cleanEmail = (l.customerEmail || "").trim().toLowerCase();
+      const leadId = (l.id || "").trim().toLowerCase();
+
+      // Find matching quotation (most recent first)
+      const matched = quotations.find((q) => {
+        const qCustName = (q.customer?.name || "")
+          .trim()
+          .toLowerCase()
+          .replace(/^["'\s]+|["'\s]+$/g, "");
+        const qCustEmail = (q.customer?.email || "").trim().toLowerCase();
+        const qNotes = (q.notes || "").toLowerCase();
+        const qSubject = (q.subject || "").toLowerCase();
+        const lNotes = (l.notes || "").toLowerCase();
+
+        // Check if leadId is referenced
+        if (leadId && (qNotes.includes(leadId) || qSubject.includes(leadId))) return true;
+
+        // Check if quotation number is in lead notes
+        if (q.quotationNo && lNotes.includes(q.quotationNo.toLowerCase())) return true;
+
+        // Check email match
+        if (cleanEmail && qCustEmail && cleanEmail === qCustEmail) return true;
+
+        // Check customer name match
+        if (
+          cleanName &&
+          qCustName &&
+          (cleanName === qCustName ||
+            cleanName.includes(qCustName) ||
+            qCustName.includes(cleanName))
+        )
+          return true;
+
+        return false;
+      });
+
+      if (matched) {
+        map[l.id] = matched;
+      }
+    });
+
+    return map;
+  }, [quotations, leads]);
+
+  const handleQuotationAction = useCallback(
+    (lead, forceCreate = false) => {
+      const existingQuotation = leadQuotationMap[lead.id];
+      if (existingQuotation && !forceCreate) {
+        // Show existing quotation directly in print / view modal
+        setViewingQuotation(existingQuotation);
+        return;
+      }
+
+      // Direct show create quotation form with lead pre-filled parameters
+      const cleanCustomerName = (lead.customerName || "")
+        .replace(/^["'\s]+|["'\s]+$/g, "")
+        .trim();
+      let reqSnippet = "";
+      if (lead.notes) {
+        const match = lead.notes.match(/Requirement:\s*([\s\S]*?)(?:\n\n|$)/i);
+        reqSnippet = match ? match[1].trim() : lead.notes.split("\n\n[")[0].trim();
+      }
+
+      const params = new URLSearchParams({
+        action: "create",
+        customerName: cleanCustomerName,
+        email: lead.customerEmail || "",
+        phone: lead.phone || lead.customerPhone || "",
+        subject: lead.source ? `Quotation for ${lead.source}` : `Quotation for ${cleanCustomerName}`,
+        notes: reqSnippet || (lead.id ? `Ref Lead: ${lead.id}` : ""),
+        leadId: lead.id || "",
+      });
+
+      router.push(`/quotations?${params.toString()}`);
+    },
+    [leadQuotationMap, router]
+  );
 
   const handleSyncGmail = useCallback(
     async (isSilent = false) => {
@@ -474,7 +576,7 @@ export default function LeadsPage() {
                           </div>
 
                           {/* Email & Special State Tags */}
-                          {(l.customerEmail || l.stage === "Quotation Sent" || isRepliedViaGmail) && (
+                          {(l.customerEmail || l.stage === "Quotation Sent" || leadQuotationMap[l.id] || isRepliedViaGmail) && (
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {l.customerEmail && (
                                 <a
@@ -485,14 +587,32 @@ export default function LeadsPage() {
                                   <span className="truncate">{l.customerEmail}</span>
                                 </a>
                               )}
-                              {l.stage === "Quotation Sent" && (
+                              {leadQuotationMap[l.id] ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingQuotation(leadQuotationMap[l.id])}
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 border border-blue-500/25 hover:bg-blue-500/20 transition-all cursor-pointer"
+                                  title="Click to view quotation document"
+                                >
+                                  <FileText className="size-3" />
+                                  <span>{leadQuotationMap[l.id].quotationNo}</span>
+                                  {leadQuotationMap[l.id].grandTotal ? (
+                                    <span className="font-bold text-foreground">
+                                      · {fmtINR(leadQuotationMap[l.id].grandTotal)}
+                                    </span>
+                                  ) : null}
+                                  <span className="text-[10px] uppercase font-bold text-blue-500">
+                                    ({leadQuotationMap[l.id].status || "Sent"})
+                                  </span>
+                                </button>
+                              ) : l.stage === "Quotation Sent" ? (
                                 <Link
                                   href="/quotations"
                                   className="inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20"
                                 >
                                   <FileText className="size-3" /> Quotation Active
                                 </Link>
-                              )}
+                              ) : null}
                               {isRepliedViaGmail && (
                                 <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                   <CheckCircle2 className="size-3" /> Replied via Gmail
@@ -566,7 +686,7 @@ export default function LeadsPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 gap-1 text-[11px] font-semibold text-primary border-primary/30 hover:bg-primary/10 px-2"
+                                className="h-8 gap-1 text-[11px] font-semibold text-primary border-primary/30 hover:bg-primary/10 px-2 cursor-pointer"
                                 onClick={() => openEmailModal(l, "followup")}
                               >
                                 <Send className="size-3 shrink-0" /> Follow-up
@@ -576,10 +696,17 @@ export default function LeadsPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 px-2"
-                                onClick={() => openEmailModal(l, "quotation")}
+                                className={`h-8 gap-1 text-[11px] font-semibold px-2 cursor-pointer ${
+                                  leadQuotationMap[l.id]
+                                    ? "text-blue-600 dark:text-blue-400 border-blue-500/40 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100"
+                                    : "text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+                                }`}
+                                onClick={() => handleQuotationAction(l)}
                               >
-                                <FileText className="size-3 shrink-0" /> Quotation
+                                <FileText className="size-3 shrink-0" />
+                                <span className="truncate">
+                                  {leadQuotationMap[l.id] ? "View Quotation" : "Quotation"}
+                                </span>
                               </Button>
                             </div>
                           </div>
@@ -628,7 +755,25 @@ export default function LeadsPage() {
                                     </Link>
                                     <StatusBadge value={l.stage} />
                                     <StatusBadge value={l.priority} />
-                                    {l.stage === "Quotation Sent" && (
+                                    {leadQuotationMap[l.id] ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewingQuotation(leadQuotationMap[l.id])}
+                                        className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 border border-blue-500/25 hover:bg-blue-500/20 transition-all cursor-pointer"
+                                        title="Click to view quotation document"
+                                      >
+                                        <FileText className="size-3" />
+                                        <span>{leadQuotationMap[l.id].quotationNo}</span>
+                                        {leadQuotationMap[l.id].grandTotal ? (
+                                          <span className="font-bold text-foreground">
+                                            · {fmtINR(leadQuotationMap[l.id].grandTotal)}
+                                          </span>
+                                        ) : null}
+                                        <span className="text-[10px] uppercase font-bold text-blue-500">
+                                          ({leadQuotationMap[l.id].status || "Sent"})
+                                        </span>
+                                      </button>
+                                    ) : l.stage === "Quotation Sent" ? (
                                       <Link
                                         href="/quotations"
                                         className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
@@ -636,7 +781,7 @@ export default function LeadsPage() {
                                       >
                                         <FileText className="size-3" /> Quotation Active
                                       </Link>
-                                    )}
+                                    ) : null}
                                     {isRepliedViaGmail && (
                                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20">
                                         <Mail className="size-3" /> Replied via Gmail
@@ -708,22 +853,44 @@ export default function LeadsPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="gap-1 h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary"
+                                      className="gap-1 h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:border-primary cursor-pointer"
                                       onClick={() => openEmailModal(l, "followup")}
-                                      title="Send Follow-up (advances to Contacted)"
+                                      title="Send Follow-up Email (advances to Contacted)"
                                     >
                                       <Send className="size-3" /> Follow-up
                                     </Button>
 
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="gap-1 h-7 text-xs font-semibold text-blue-600 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500"
-                                      onClick={() => openEmailModal(l, "quotation")}
-                                      title="Send Quotation (advances to Quotation Sent)"
-                                    >
-                                      <FileText className="size-3" /> Quotation
-                                    </Button>
+                                    {leadQuotationMap[l.id] ? (
+                                      <div className="inline-flex items-center rounded-md border border-blue-500/30 shadow-2xs overflow-hidden">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="gap-1 h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 border-0 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100/80 rounded-none px-2.5 cursor-pointer"
+                                          onClick={() => handleQuotationAction(l)}
+                                          title={`View sent quotation ${leadQuotationMap[l.id].quotationNo}`}
+                                        >
+                                          <FileText className="size-3" /> View Quotation
+                                        </Button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleQuotationAction(l, true)}
+                                          className="h-7 px-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100/90 dark:bg-blue-900/60 hover:bg-blue-200 border-l border-blue-500/25 cursor-pointer"
+                                          title="Create another new quotation for this lead"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1 h-7 text-xs font-semibold text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:border-blue-500 cursor-pointer"
+                                        onClick={() => handleQuotationAction(l)}
+                                        title="Create itemized Quotation for this Lead"
+                                      >
+                                        <FileText className="size-3" /> Create Quotation
+                                      </Button>
+                                    )}
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <Calendar className="size-3.5" />
@@ -833,6 +1000,33 @@ export default function LeadsPage() {
                 </select>
               </div>
 
+              {emailType === "quotation" && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div>
+                    <p className="font-bold flex items-center gap-1.5 text-blue-800 dark:text-blue-300">
+                      <FileText className="size-4 text-blue-600 dark:text-blue-400" />
+                      Generate formal itemized Quotation
+                    </p>
+                    <p className="text-[11px] text-blue-700 dark:text-blue-300/80 mt-0.5 leading-relaxed">
+                      Build an official quotation with SKU items, pricing, GST calculation, and attached PDF.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    type="button"
+                    className="shrink-0 h-8.5 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
+                    onClick={() => {
+                      const targetLead = selectedLead;
+                      setSelectedLead(null);
+                      handleQuotationAction(targetLead);
+                    }}
+                  >
+                    <FileText className="size-3.5" />
+                    {leadQuotationMap[selectedLead?.id] ? "View Existing Quotation" : "Create Quotation Now"}
+                  </Button>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Recipient (To)</label>
                 <Input
@@ -926,6 +1120,16 @@ export default function LeadsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Direct Quotation Document Print / Details Modal */}
+      {viewingQuotation && (
+        <DocumentPrintView
+          doc={viewingQuotation}
+          type="Quotation"
+          company={company}
+          onClose={() => setViewingQuotation(null)}
+        />
       )}
     </>
   );

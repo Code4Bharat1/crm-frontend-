@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { getSuppliers, createSupplier, updateSupplier, deleteSupplier } from "@/services/documentService";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Plus } from "lucide-react";
 
 const emptyForm = {
   name: "",
@@ -835,6 +835,15 @@ export default function SuppliersPage() {
         breadcrumb="Purchase / Suppliers"
         title="Suppliers"
         subtitle="Manage supplier master with contact, GST, and bank details for purchase orders"
+        actions={
+          <button
+            onClick={openCreate}
+            className="flex items-center justify-center gap-1.5 bg-cyan-700 hover:bg-cyan-800 text-white h-9 px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
+          >
+            <Plus className="size-4" />
+            <span>New Supplier</span>
+          </button>
+        }
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
@@ -843,15 +852,6 @@ export default function SuppliersPage() {
         <div className="col-span-2 sm:col-span-1">
           <Kpi label="Inactive" value={suppliers.length - active} tone="warning" />
         </div>
-      </div>
-
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 bg-cyan-700 hover:bg-cyan-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md transition-all cursor-pointer"
-        >
-          + New Supplier
-        </button>
       </div>
 
       {loading ? (

@@ -932,21 +932,26 @@ export default function ProductsPage() {
           title="Product Master"
           subtitle="Central catalog with SKU, HSN codes, GST rates, supplier sourcing, stock levels, warehouse locations and serial tracking"
           actions={
-            <div className="flex items-center gap-2">
-              <button
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setShowCategoryModal(true)}
-                className="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="gap-1.5 text-xs font-semibold h-9 px-3 sm:px-3.5 rounded-xl bg-card border border-border hover:bg-muted shadow-xs cursor-pointer"
               >
-                <span>+ Add Category</span>
-              </button>
-              <button
+                <Plus className="size-3.5" />
+                <span>Add Category</span>
+              </Button>
+              <Button
                 type="button"
+                size="sm"
                 onClick={openCreate}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                className="gap-1.5 text-xs font-semibold h-9 px-3.5 sm:px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer"
               >
-                <span>+ Add Product</span>
-              </button>
+                <Plus className="size-3.5" />
+                <span>Add Product</span>
+              </Button>
             </div>
           }
         />

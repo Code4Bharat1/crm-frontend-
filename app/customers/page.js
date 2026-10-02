@@ -9,7 +9,7 @@ import { DataTable, Kpi, PageHeader, StatusBadge, Field } from "@/components/crm
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { inrShort } from "@/lib/crm-data";
-import { FilePlus2, User, Pencil, Trash2 } from "lucide-react";
+import { FilePlus2, User, Pencil, Trash2, Plus } from "lucide-react";
 
 const emptyForm = {
   name: "",
@@ -582,9 +582,11 @@ export default function CustomersPage() {
         actions={
           <Button
             onClick={openCreate}
-            className="bg-accent font-bold text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg transition-all"
+            size="sm"
+            className="gap-1.5 text-xs sm:text-sm font-semibold h-9 px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer"
           >
-            + Add customer
+            <Plus className="size-4" />
+            <span>Add Customer</span>
           </Button>
         }
       />

@@ -42,7 +42,7 @@ export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
 
   // Dashboard filter state
-  const [period, setPeriod] = useState("This month");
+  const [period, setPeriod] = useState("All time");
   const [salesperson, setSalesperson] = useState("All");
   const [area, setArea] = useState("All");
 
@@ -109,10 +109,10 @@ export default function Dashboard() {
   };
 
   const handleResetFilters = () => {
-    setPeriod("This month");
+    setPeriod("All time");
     setSalesperson("All");
     setArea("All");
-    fetchDashboard({ period: "This month", salesperson: "All", area: "All" });
+    fetchDashboard({ period: "All time", salesperson: "All", area: "All" });
   };
 
   useEffect(() => {
@@ -202,20 +202,11 @@ export default function Dashboard() {
   const dueFollowUps = dashboardData?.dueFollowUps || [];
   const serviceRequests = dashboardData?.serviceRequests || [];
   const topProject = dashboardData?.topProject;
-  const todayActivity = (dashboardData?.recentActivity || [])
+  const recentActivity = (dashboardData?.recentActivity || [])
     .map(r => ({
       ...r,
       at: new Date(r.at || r.createdAt || Date.now())
     }))
-    .filter(item => {
-      const itemDate = new Date(item.at);
-      const now = new Date();
-      return (
-        itemDate.getFullYear() === now.getFullYear() &&
-        itemDate.getMonth() === now.getMonth() &&
-        itemDate.getDate() === now.getDate()
-      );
-    })
     .sort((a, b) => b.at.getTime() - a.at.getTime());
   const orderToCash = dashboardData?.orderToCash || {
     leads: 0,
@@ -746,11 +737,11 @@ export default function Dashboard() {
         </Section>
       </div>
 
-      {/* ─── TODAY'S SYSTEM & BUSINESS ACTIVITY (AUDIT TRAIL) ─── */}
+      {/* ─── RECENT SYSTEM & BUSINESS ACTIVITY (AUDIT TRAIL) ─── */}
       <div className="mt-4 sm:mt-5">
         <Section 
-          title="Today's System & Customer Activity" 
-          description="Real-time events and user actions recorded in the immutable audit trail today"
+          title="Recent System & Customer Activity" 
+          description="Real-time events and user actions recorded in the immutable audit trail"
           actions={
             <Button size="sm" variant="outline" asChild className="gap-1.5 font-semibold text-xs shadow-2xs hover:bg-primary/10 hover:text-primary cursor-pointer">
               <Link href="/audit-logs">
@@ -760,13 +751,13 @@ export default function Dashboard() {
             </Button>
           }
         >
-          {todayActivity.length === 0 ? (
+          {recentActivity.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">
-              <p className="font-semibold text-sm text-foreground/80 mb-1">No system activity recorded today</p>
-              <p>User logins, data changes, and operational events occurring today will appear here in real-time.</p>
+              <p className="font-semibold text-sm text-foreground/80 mb-1">No system activity recorded yet</p>
+              <p>User logins, data changes, and operational events will appear here in real-time.</p>
             </div>
           ) : (
-            <Timeline items={todayActivity} />
+            <Timeline items={recentActivity} />
           )}
         </Section>
       </div>

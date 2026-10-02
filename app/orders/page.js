@@ -10,6 +10,7 @@ import { fetchApi } from "@/services/api";
 import { DataTable, Kpi, PageHeader, StatusBadge } from "@/components/crm-ui";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { LineItemsEditor } from "@/components/LineItemsEditor";
+import { ConvertNotificationModal } from "@/components/ConvertNotificationModal";
 import {
   Printer,
   Pencil,
@@ -18,7 +19,8 @@ import {
   CheckCircle2,
   Truck,
   Receipt,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react";
 
 const emptyForm = {
@@ -146,20 +148,37 @@ export default function SalesOrdersPage() {
     setSaving(false);
   };
 
+  const [convertModal, setConvertModal] = useState(null);
+
   const handleDelete = async (id) => {
     if (!confirm("Delete this sales order?")) return;
     try { await deleteSalesOrder(id); showToast("Deleted"); load(); }
     catch (e) { showToast(e.message, "error"); }
   };
 
-  const handleCreateDN = async (so) => {
-    try { const dn = await createDNFromSO(so.soNo || so._id, {}); showToast(`Delivery Note ${dn.dnNo} created`); load(); }
-    catch (e) { showToast(e.message, "error"); }
+  const handleCreateDN = (so) => {
+    setConvertModal({ so, targetType: "Delivery Note" });
   };
 
-  const handleCreateInvoice = async (so) => {
-    try { const inv = await createInvoiceFromSO(so.soNo || so._id, {}); showToast(`Invoice ${inv.invoiceNo} created`); load(); }
-    catch (e) { showToast(e.message, "error"); }
+  const handleCreateInvoice = (so) => {
+    setConvertModal({ so, targetType: "Sales Invoice" });
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!convertModal?.so) return;
+    const { so, targetType } = convertModal;
+    try {
+      if (targetType === "Delivery Note") {
+        const dn = await createDNFromSO(so.soNo || so._id);
+        showToast(`Delivery Note ${dn.dnNo} created successfully ✓`);
+      } else {
+        const inv = await createInvoiceFromSO(so.soNo || so._id);
+        showToast(`Invoice ${inv.invoiceNo} created successfully ✓`);
+      }
+      load();
+    } catch (e) {
+      showToast(e.message, "error");
+    }
   };
 
   const totalValue = orders.reduce((s, o) => s + (o.grandTotal || 0), 0);
@@ -548,9 +567,10 @@ export default function SalesOrdersPage() {
         actions={
           <button
             onClick={openCreate}
-            className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
           >
-            + New Sales Order
+            <Plus className="size-4" />
+            <span>New Sales Order</span>
           </button>
         }
       />
@@ -570,6 +590,21 @@ export default function SalesOrdersPage() {
           columns={columns}
           mobileCard={renderMobileCard}
           searchKeys={["soNo", "customer.name", "poReference", "status"]}
+        />
+      )}
+
+      {convertModal && (
+        <ConvertNotificationModal
+          isOpen={Boolean(convertModal)}
+          onClose={() => setConvertModal(null)}
+          title={`Convert to ${convertModal.targetType}?`}
+          sourceDocNo={convertModal.so.soNo}
+          customerName={convertModal.so.customer?.name}
+          targetType={convertModal.targetType}
+          amount={convertModal.so.grandTotal}
+          advanceReceived={convertModal.so.advanceReceived}
+          balanceAmount={convertModal.so.balanceAmount}
+          onConfirm={handleConfirmConvert}
         />
       )}
     </>

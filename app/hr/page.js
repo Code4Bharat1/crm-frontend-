@@ -449,12 +449,12 @@ export default function Page() {
         title="Roles & Designations"
         subtitle="Manage organizational roles, designations, permissions, and active team member staffing allocations."
         actions={
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <Button
               variant="outline"
               size="sm"
               asChild
-              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-card shadow-xs cursor-pointer"
+              className="gap-1.5 text-xs font-semibold h-9 px-3 sm:px-3.5 rounded-xl bg-card border border-border hover:bg-muted shadow-xs cursor-pointer"
             >
               <Link href="/users-roles">
                 <Lock className="size-3.5" />
@@ -466,7 +466,7 @@ export default function Page() {
               variant="outline"
               size="sm"
               onClick={() => setIsRoleModalOpen(true)}
-              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-card shadow-xs cursor-pointer"
+              className="gap-1.5 text-xs font-semibold h-9 px-3 sm:px-3.5 rounded-xl bg-card border border-border hover:bg-muted shadow-xs cursor-pointer"
             >
               <Plus className="size-3.5" />
               <span className="hidden sm:inline">Create Role</span>
@@ -475,7 +475,7 @@ export default function Page() {
             <Button
               size="sm"
               onClick={() => handleOpenAssignEmployee(rolesData[0]?.name || "")}
-              className="gap-1.5 text-xs h-8.5 px-2.5 sm:px-3 bg-primary text-primary-foreground shadow-xs cursor-pointer"
+              className="gap-1.5 text-xs font-semibold h-9 px-3.5 sm:px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer"
             >
               <UserPlus className="size-3.5" />
               <span className="hidden sm:inline">Assign Employee</span>

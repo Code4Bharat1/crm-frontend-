@@ -18,7 +18,8 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react";
 
 const emptyForm = {
@@ -83,7 +84,12 @@ export default function InvoicesPage() {
     const c = customers.find(c => c._id === custId || c.id === custId);
     if (!c) return;
     const isInterState = (c.address?.state || "").toLowerCase() !== "maharashtra";
-    const addr = [c.address?.street, c.address?.city, c.address?.state, c.address?.pinCode].filter(Boolean).join(", ");
+    const email = c.contactPerson?.email || c.email || c.contactEmail || "";
+    const phone = c.contactPerson?.phone || c.phone || c.contactPhone || "";
+    const contactPerson = c.contactPerson?.name || (typeof c.contactPerson === "string" ? c.contactPerson : "");
+    const addr = typeof c.address === "string"
+      ? c.address
+      : [c.address?.street, c.address?.city, c.address?.state, c.address?.pinCode].filter(Boolean).join(", ");
     setForm(f => ({
       ...f,
       isInterState,
@@ -93,9 +99,9 @@ export default function InvoicesPage() {
         address: addr,
         gstNumber: c.gstNumber || "",
         state: c.address?.state || "",
-        contactPerson: c.contactPerson?.name || "",
-        email: c.contactPerson?.email || "",
-        phone: c.contactPerson?.phone || ""
+        contactPerson,
+        email,
+        phone,
       },
       billingAddress: addr,
       shippingAddress: addr,
@@ -408,33 +414,89 @@ export default function InvoicesPage() {
 
       {/* Payment Modal */}
       {paymentModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 w-[94vw] max-w-sm shadow-2xl">
-            <h3 className="font-bold text-base sm:text-lg mb-1 text-foreground">Record Payment</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4 truncate">{paymentModal.invoiceNo} — Balance: <strong className="text-rose-600 dark:text-rose-400">{fmtINR(paymentModal.balanceAmount)}</strong></p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Amount (₹) *</label>
-                <input type="number" className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-bold" value={paymentForm.amount} onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))} autoFocus />
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-3xl p-6 sm:p-7 w-[94vw] max-w-sm sm:max-w-md shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-14 h-14 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3.5 border border-emerald-500/20">
+              💳
+            </div>
+            <h3 className="font-bold text-lg sm:text-xl mb-1 text-foreground text-center">Record Payment</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4 text-center">
+              Record payment receipt for Invoice <strong className="text-foreground font-bold">{paymentModal.invoiceNo}</strong>
+            </p>
+
+            <div className="bg-muted/40 border border-border/70 rounded-2xl p-3.5 mb-4 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Customer:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{paymentModal.customer?.name}</span>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Payment Mode</label>
-                <select className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={paymentForm.mode} onChange={e => setPaymentForm(f => ({ ...f, mode: e.target.value }))}>
-                  {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
-                </select>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Invoice Total:</span>
+                <span className="font-bold text-foreground">{fmtINR(paymentModal.grandTotal)}</span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Balance Due:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400">{fmtINR(paymentModal.balanceAmount)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-5">
               <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">Reference (UTR / Cheque No.)</label>
-                <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono" value={paymentForm.reference} onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))} placeholder="e.g. UTR123456" />
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">Amount Received (₹) *</label>
+                <input
+                  type="number"
+                  className="w-full border border-border bg-background text-foreground rounded-xl px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-emerald-500"
+                  value={paymentForm.amount}
+                  onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Mode</label>
+                  <select
+                    className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500"
+                    value={paymentForm.mode}
+                    onChange={e => setPaymentForm(f => ({ ...f, mode: e.target.value }))}
+                  >
+                    {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Reference No.</label>
+                  <input
+                    className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-xs font-mono"
+                    value={paymentForm.reference}
+                    onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))}
+                    placeholder="UTR / Cheque"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-muted-foreground mb-1">Notes</label>
-                <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm" value={paymentForm.notes} onChange={e => setPaymentForm(f => ({ ...f, notes: e.target.value }))} placeholder="Payment notes" />
+                <input
+                  className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-xs"
+                  value={paymentForm.notes}
+                  onChange={e => setPaymentForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Optional payment notes"
+                />
               </div>
             </div>
-            <div className="flex gap-2 sm:gap-3 mt-5">
-              <button onClick={() => setPaymentModal(null)} className="flex-1 border border-border rounded-lg py-2 text-xs sm:text-sm hover:bg-muted text-foreground">Cancel</button>
-              <button onClick={handleRecordPayment} className="flex-1 bg-emerald-600 text-white rounded-lg py-2 text-xs sm:text-sm font-semibold hover:bg-emerald-700 shadow-xs">Record Payment</button>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentModal(null)}
+                className="flex-1 py-2.5 sm:py-3 px-4 border border-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-muted text-foreground transition-all cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRecordPayment}
+                className="flex-1 py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Yes, Record Payment
+              </button>
             </div>
           </div>
         </div>
@@ -451,27 +513,44 @@ export default function InvoicesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">Customer *</label>
-                  {customers.length > 0 && (
-                    <select
-                      className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none bg-background text-foreground mb-1.5"
-                      value={form.customer?.id || customers.find(c => c.name === form.customer?.name)?._id || customers.find(c => c.name === form.customer?.name)?.id || ""}
-                      onChange={e => handleCustomerSelect(e.target.value)}
-                    >
-                      <option value="">Choose from customer master…</option>
-                      {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name} ({c.id || "CUST"})</option>)}
-                    </select>
+                  <select
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none bg-background text-foreground"
+                    value={form.customer?.id || customers.find(c => c.name === form.customer?.name)?._id || customers.find(c => c.name === form.customer?.name)?.id || ""}
+                    onChange={e => handleCustomerSelect(e.target.value)}
+                  >
+                    <option value="">Choose from customer master…</option>
+                    {customers.map(c => <option key={c._id || c.id} value={c._id || c.id}>{c.name} ({c.id || "CUST"})</option>)}
+                  </select>
+                  {form.customer?.name && (
+                    <div className="mt-1.5 text-xs bg-muted/60 px-2.5 py-1 rounded-md border border-border/60 flex items-center gap-1.5">
+                      {form.customer.email ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1.5">
+                          ✉ <span className="font-mono">{form.customer.email}</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400 text-[11px]">
+                          ✉ No email on file
+                        </span>
+                      )}
+                    </div>
                   )}
-                  <input
-                    className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-medium"
-                    value={form.customer?.name || ""}
-                    onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, name: e.target.value } }))}
-                    placeholder="Customer name"
-                    required
-                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">GST Number</label>
-                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono uppercase" value={form.customer?.gstNumber || ""} onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, gstNumber: e.target.value } }))} placeholder="27AABCN..." />
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm font-mono uppercase" value={form.customer?.gstNumber || ""} onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, gstNumber: e.target.value.toUpperCase() } }))} placeholder="27AABCN..." />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Address</label>
+                  <textarea
+                    className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-sm"
+                    rows={2}
+                    value={form.customer?.address || form.billingAddress || ""}
+                    onChange={e => {
+                      const addr = e.target.value;
+                      setForm(f => ({ ...f, customer: { ...f.customer, address: addr }, billingAddress: addr, shippingAddress: f.shippingAddress || addr }));
+                    }}
+                    placeholder="Customer billing address"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">Due Date</label>
@@ -554,9 +633,10 @@ export default function InvoicesPage() {
         actions={
           <button
             onClick={openCreate}
-            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white h-9 px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
           >
-            + New Invoice
+            <Plus className="size-4" />
+            <span>New Invoice</span>
           </button>
         }
       />

@@ -64,28 +64,80 @@ export default function InvoiceDetailPage() {
       {printing && company && <DocumentPrintView doc={doc} type="Sales Invoice" company={company} onClose={() => setPrinting(false)} />}
       
       {showPayment && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl">
-            <h3 className="font-bold text-lg mb-4">Record Payment</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Amount (₹)</label>
-                <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm" value={paymentForm.amount} onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))} autoFocus />
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-white border border-border rounded-3xl p-6 sm:p-7 w-[94vw] max-w-sm sm:max-w-md shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-14 h-14 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-3.5 border border-emerald-500/20">
+              💳
+            </div>
+            <h3 className="font-bold text-lg sm:text-xl mb-1 text-gray-900 text-center">Record Payment</h3>
+            <p className="text-xs sm:text-sm text-gray-500 mb-4 text-center">
+              Record payment receipt for Invoice <strong className="text-gray-900 font-bold">{doc.invoiceNo}</strong>
+            </p>
+
+            <div className="bg-gray-50 border rounded-2xl p-3.5 mb-4 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Customer:</span>
+                <span className="font-semibold text-gray-900 truncate max-w-[200px]">{doc.customer?.name}</span>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Mode</label>
-                <select className="w-full border rounded-lg px-3 py-2 text-sm" value={paymentForm.mode} onChange={e => setPaymentForm(f => ({ ...f, mode: e.target.value }))}>
-                  {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
-                </select>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Invoice Total:</span>
+                <span className="font-bold text-gray-900">{fmtINR(doc.grandTotal)}</span>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Reference</label>
-                <input className="w-full border rounded-lg px-3 py-2 text-sm" value={paymentForm.reference} onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))} />
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Balance Due:</span>
+                <span className="font-bold text-rose-600">{fmtINR(doc.balanceAmount)}</span>
               </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowPayment(false)} className="flex-1 border rounded-lg py-2 text-sm">Cancel</button>
-              <button onClick={handlePayment} className="flex-1 bg-green-600 text-white rounded-lg py-2 text-sm font-medium">Record</button>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Amount Received (₹) *</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-xl px-3.5 py-2 text-sm font-bold focus:ring-2 focus:ring-emerald-500"
+                  value={paymentForm.amount}
+                  onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Mode</label>
+                  <select
+                    className="w-full border rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500"
+                    value={paymentForm.mode}
+                    onChange={e => setPaymentForm(f => ({ ...f, mode: e.target.value }))}
+                  >
+                    {PAYMENT_MODES.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reference No.</label>
+                  <input
+                    className="w-full border rounded-xl px-3 py-2 text-xs font-mono"
+                    value={paymentForm.reference}
+                    onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))}
+                    placeholder="UTR / Cheque"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPayment(false)}
+                className="flex-1 py-2.5 sm:py-3 px-4 border rounded-xl text-xs sm:text-sm font-semibold hover:bg-gray-50 text-gray-700 transition-all cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePayment}
+                className="flex-1 py-2.5 sm:py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Yes, Record Payment
+              </button>
             </div>
           </div>
         </div>

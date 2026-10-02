@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getProforma, getCompany, recordProformaAdvance, convertProformaToSO, fmtINR, fmtDate } from "@/services/documentService";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { PageHeader, StatusBadge } from "@/components/crm-ui";
@@ -17,12 +17,15 @@ function InfoCard({ label, children }) {
 
 export default function ProformaDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const [doc, setDoc] = useState(null);
   const [company, setCompany] = useState(null);
   const [printing, setPrinting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [showAdvance, setShowAdvance] = useState(false);
+  const [showSOModal, setShowSOModal] = useState(false);
+  const [convertingSO, setConvertingSO] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
@@ -53,13 +56,17 @@ export default function ProformaDetailPage() {
     }
   };
 
-  const handleConvertToSO = async () => {
+  const confirmConvertToSO = async () => {
+    setConvertingSO(true);
     try {
       const so = await convertProformaToSO(id, {});
-      showToast(`Sales Order ${so.soNo} created`);
-      load();
+      showToast(`Sales Order ${so.soNo} created successfully!`);
+      setShowSOModal(false);
+      router.push(`/orders/${so.soNo}`);
     } catch (e) {
       showToast(e.message, "error");
+    } finally {
+      setConvertingSO(false);
     }
   };
 
@@ -84,6 +91,65 @@ export default function ProformaDetailPage() {
         </div>
       )}
 
+      {/* Convert to Sales Order Confirmation Modal */}
+      {showSOModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-card bg-white border border-border rounded-2xl p-5 sm:p-6 w-[94vw] max-w-sm sm:max-w-md shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center text-xl mx-auto mb-3 border border-emerald-500/20">
+              🛒
+            </div>
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 text-center mb-1">
+              Convert to Sales Order?
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 text-center mb-4">
+              Are you sure you want to convert Proforma Invoice <strong className="text-gray-900">{doc.proformaNo}</strong> into a confirmed Sales Order?
+            </p>
+
+            <div className="bg-gray-50 border rounded-xl p-3.5 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Customer:</span>
+                <span className="font-semibold text-gray-900 truncate max-w-[200px]">{doc.customer?.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Grand Total:</span>
+                <span className="font-bold text-gray-900">{fmtINR(doc.grandTotal)}</span>
+              </div>
+              {doc.advanceRequired > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Advance Required:</span>
+                  <span className="font-semibold text-purple-600">{fmtINR(doc.advanceRequired)}</span>
+                </div>
+              )}
+              {doc.advanceReceived > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Advance Received:</span>
+                  <span className="font-semibold text-emerald-600">{fmtINR(doc.advanceReceived)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                disabled={convertingSO}
+                onClick={() => setShowSOModal(false)}
+                className="flex-1 py-2.5 px-4 border rounded-xl text-xs sm:text-sm font-semibold hover:bg-gray-50 text-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                disabled={convertingSO}
+                onClick={confirmConvertToSO}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {convertingSO ? "Converting..." : "Yes, Convert to SO"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PageHeader breadcrumb="Sales / Proforma Invoices" title={doc.proformaNo} subtitle={`Customer: ${doc.customer?.name} · ${fmtDate(doc.date)}`} />
       <div className="flex flex-wrap gap-2 mb-6">
         <button onClick={() => setPrinting(true)} className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">🖨 Print / PDF</button>
@@ -99,7 +165,7 @@ export default function ProformaDetailPage() {
         ) : (
           <>
             <button onClick={() => setShowAdvance(true)} className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm font-medium transition-colors">+ Record Advance</button>
-            <button onClick={handleConvertToSO} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">→ Create Sales Order</button>
+            <button onClick={() => setShowSOModal(true)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">→ Create Sales Order</button>
           </>
         )}
       </div>
@@ -136,3 +202,4 @@ export default function ProformaDetailPage() {
     </>
   );
 }
+

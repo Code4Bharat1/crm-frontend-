@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { calcItem, fmtINR, getProducts } from "@/services/documentService";
 
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -22,7 +22,13 @@ const emptyItem = {
   totalAmount: 0,
 };
 
-export function LineItemsEditor({ items, onChange, isInterState = false, isDelivery = false }) {
+export function LineItemsEditor({
+  items,
+  onChange,
+  isInterState = false,
+  isDelivery = false,
+  allowOutOfStock = false,
+}) {
   const [productList, setProductList] = useState([]);
 
   useEffect(() => {
@@ -30,6 +36,15 @@ export function LineItemsEditor({ items, onChange, isInterState = false, isDeliv
       .then((prods) => setProductList(Array.isArray(prods) ? prods : []))
       .catch(() => {});
   }, []);
+
+  // Filter out products with stock <= 0 (out of stock) unless explicitly allowed (e.g. for Purchase Orders)
+  const availableProducts = useMemo(() => {
+    if (allowOutOfStock) return productList;
+    return productList.filter((p) => {
+      const stockVal = Number(p.stock ?? 0);
+      return stockVal > 0;
+    });
+  }, [productList, allowOutOfStock]);
 
   const updateItem = (index, field, value) => {
     const updated = items.map((item, i) => {
@@ -99,14 +114,14 @@ export function LineItemsEditor({ items, onChange, isInterState = false, isDeliv
                 <td style={tdStyle} className="text-gray-400 text-center font-mono">{i + 1}</td>
                 <td style={tdStyle}>
                   <div className="space-y-1">
-                    {productList.length > 0 && (
+                    {availableProducts.length > 0 && (
                       <select
                         className="w-full border border-blue-200 bg-blue-50/50 rounded px-2 py-0.5 text-[11px] text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-500 mb-0.5"
                         value={item.productCode || ""}
                         onChange={e => handleProductSelect(i, e.target.value)}
                       >
                         <option value="">⚡ Select from Product Master…</option>
-                        {productList.map(p => (
+                        {availableProducts.map(p => (
                           <option key={p._id || p.itemCode} value={p.itemCode}>
                             {p.name} ({p.itemCode}) — ₹{p.price} [Stock: {p.stock}]
                           </option>

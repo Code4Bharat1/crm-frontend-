@@ -332,7 +332,7 @@ export default function Page() {
   const adminOrFinanceCount = roles.filter((r) => {
     if (!r.permissions) return false;
     const hasFinance = Boolean(r.permissions.ledger || r.permissions.banking || r.permissions.gst);
-    const hasAdmin = Boolean(r.permissions.company_settings || r.permissions.users_roles || r.permissions.deployment);
+    const hasAdmin = Boolean(r.permissions.company_settings || r.permissions.users_roles);
     return hasFinance || hasAdmin;
   }).length;
 
@@ -343,18 +343,23 @@ export default function Page() {
         title="Users & Roles"
         subtitle="Manage granular role-based access control corresponding to all sidebar modules and navigation items."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => handleOpenAddEmployee()}
-              className="gap-1.5"
+              className="gap-1.5 text-xs font-semibold h-9 px-3 sm:px-3.5 rounded-xl bg-card border border-border hover:bg-muted shadow-xs cursor-pointer"
             >
-              <UserPlus className="size-4" />
-              Add Employee
+              <UserPlus className="size-3.5" />
+              <span>Add Employee</span>
             </Button>
-            <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
-              <Plus className="size-4" />
-              Create Role
+            <Button
+              size="sm"
+              onClick={handleOpenCreateModal}
+              className="gap-1.5 text-xs font-semibold h-9 px-3.5 sm:px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+              <span>Create Role</span>
             </Button>
           </div>
         }

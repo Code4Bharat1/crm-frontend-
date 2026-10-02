@@ -11,6 +11,7 @@ import {
   fmtDate
 } from "@/services/projectService";
 import { PageHeader, Kpi, StatusBadge } from "@/components/crm-ui";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   TrendingUp,

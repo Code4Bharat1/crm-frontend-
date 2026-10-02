@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   Clock,
   Layers,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react";
 
 const STATUS_COLORS = {
@@ -55,6 +56,7 @@ function QuotationsContent() {
   const preselectedPhone = searchParams.get("phone");
   const preselectedSubject = searchParams.get("subject");
   const preselectedNotes = searchParams.get("notes");
+  const preselectedLeadId = searchParams.get("leadId");
   const isCreateAction = searchParams.get("action") === "create" || searchParams.get("create") === "true";
 
   const [quotations, setQuotations] = useState([]);
@@ -77,6 +79,9 @@ function QuotationsContent() {
   // Convert to Proforma Modal
   const [convertToPIModal, setConvertToPIModal] = useState(null);
   const [piAdvanceAmount, setPiAdvanceAmount] = useState("");
+  // Convert to SO Modal
+  const [convertToSOModal, setConvertToSOModal] = useState(null);
+  const [convertingSO, setConvertingSO] = useState(false);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -131,7 +136,7 @@ function QuotationsContent() {
           ...emptyForm,
           isInterState,
           subject: preselectedSubject || (found ? `Quotation for ${found.name}` : ""),
-          notes: preselectedNotes || "",
+          notes: preselectedNotes || (preselectedLeadId ? `Ref Lead: ${preselectedLeadId}` : ""),
           customer: found ? {
             id: found._id || found.id,
             name: found.name,
@@ -160,7 +165,7 @@ function QuotationsContent() {
         }
       }
     });
-  }, [load, preselectedCustId, preselectedCustName, preselectedEmail, preselectedPhone, preselectedSubject, preselectedNotes, isCreateAction]);
+  }, [load, preselectedCustId, preselectedCustName, preselectedEmail, preselectedPhone, preselectedSubject, preselectedNotes, preselectedLeadId, isCreateAction]);
 
   const recalc = (items, isInterState) => items.map(i => calcItem(i, isInterState));
   const totals = calcTotals(form.items, form.isInterState);
@@ -169,18 +174,25 @@ function QuotationsContent() {
     const c = customers.find(c => c._id === custId || c.id === custId);
     if (!c) return;
     const isInterState = (c.address?.state || "").toLowerCase() !== "maharashtra";
+    const email = c.contactPerson?.email || c.email || c.contactEmail || "";
+    const phone = c.contactPerson?.phone || c.phone || c.contactPhone || "";
+    const contactPerson = c.contactPerson?.name || (typeof c.contactPerson === "string" ? c.contactPerson : "");
+    const address = typeof c.address === "string"
+      ? c.address
+      : [c.address?.street, c.address?.city, c.address?.state, c.address?.pinCode].filter(Boolean).join(", ");
+
     setForm(f => ({
       ...f,
       isInterState,
       customer: {
         id: c._id || c.id,
         name: c.name,
-        address: [c.address?.street, c.address?.city, c.address?.state, c.address?.pinCode].filter(Boolean).join(", "),
+        address,
         gstNumber: c.gstNumber || "",
         state: c.address?.state || "",
-        contactPerson: c.contactPerson?.name || "",
-        email: c.contactPerson?.email || "",
-        phone: c.contactPerson?.phone || "",
+        contactPerson,
+        email,
+        phone,
       },
       salesperson: f.salesperson || c.salesPerson || "",
       items: recalc(f.items, isInterState),
@@ -269,12 +281,19 @@ function QuotationsContent() {
     }
   };
 
-  const handleConvertToSO = async (q) => {
+  const confirmConvertToSO = async () => {
+    if (!convertToSOModal) return;
+    setConvertingSO(true);
     try {
-      const so = await convertQuotationToSO(q.quotationNo || q._id, {});
-      showToast(`Sales Order ${so.soNo} created`);
+      const so = await convertQuotationToSO(convertToSOModal.quotationNo || convertToSOModal._id, {});
+      showToast(`Sales Order ${so.soNo} created successfully!`);
+      setConvertToSOModal(null);
       load();
-    } catch (e) { showToast(e.message, "error"); }
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setConvertingSO(false);
+    }
   };
 
   const totalValue = quotations.reduce((s, q) => s + (q.grandTotal || 0), 0);
@@ -385,8 +404,9 @@ function QuotationsContent() {
                     <span>PI</span>
                   </button>
                   <button
-                    onClick={() => handleConvertToSO(q)}
+                    onClick={() => setConvertToSOModal(q)}
                     className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg font-semibold transition-colors"
+                    title="Convert to Sales Order"
                   >
                     <ArrowRight className="size-3 text-emerald-600 dark:text-emerald-400" />
                     <span>SO</span>
@@ -548,7 +568,7 @@ function QuotationsContent() {
                       <span>PI</span>
                     </button>
                     <button
-                      onClick={() => handleConvertToSO(q)}
+                      onClick={() => setConvertToSOModal(q)}
                       title="Convert to Sales Order"
                       className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all whitespace-nowrap cursor-pointer"
                     >
@@ -623,6 +643,53 @@ function QuotationsContent() {
         </div>
       )}
 
+      {/* Convert to Sales Order Modal */}
+      {convertToSOModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 w-[94vw] max-w-sm sm:max-w-md shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3 border border-emerald-500/20">
+              🛒
+            </div>
+            <h3 className="font-bold text-base sm:text-lg text-foreground text-center mb-1">
+              Convert to Sales Order?
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground text-center mb-4">
+              Are you sure you want to convert Quotation <strong className="text-foreground">{convertToSOModal.quotationNo}</strong> into a confirmed Sales Order?
+            </p>
+
+            <div className="bg-muted/40 border border-border/70 rounded-xl p-3.5 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Customer:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{convertToSOModal.customer?.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Grand Total:</span>
+                <span className="font-bold text-foreground">{fmtINR(convertToSOModal.grandTotal)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                disabled={convertingSO}
+                onClick={() => setConvertToSOModal(null)}
+                className="flex-1 py-2.5 px-4 border border-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-muted text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                disabled={convertingSO}
+                onClick={confirmConvertToSO}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {convertingSO ? "Converting..." : "Yes, Convert to SO"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Add Customer Modal */}
       {showQuickCust && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4">
@@ -644,7 +711,7 @@ function QuotationsContent() {
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">Contact Person</label>
                   <input
@@ -653,6 +720,16 @@ function QuotationsContent() {
                     className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm"
                     value={quickCustForm.contactPerson.name}
                     onChange={e => setQuickCustForm(f => ({ ...f, contactPerson: { ...f.contactPerson, name: e.target.value } }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Email (For Notifications)</label>
+                  <input
+                    type="email"
+                    placeholder="client@company.com"
+                    className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm"
+                    value={quickCustForm.contactPerson.email}
+                    onChange={e => setQuickCustForm(f => ({ ...f, contactPerson: { ...f.contactPerson, email: e.target.value } }))}
                   />
                 </div>
                 <div>
@@ -766,14 +843,22 @@ function QuotationsContent() {
                     ))}
                   </select>
                   {form.customer.name && (
-                    <div className="mt-1 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded border border-border/40 truncate">
-                      Selected: <strong className="text-foreground">{form.customer.name}</strong> {form.customer.contactPerson && `· Attn: ${form.customer.contactPerson}`}
+                    <div className="mt-1.5 text-xs bg-muted/60 px-2.5 py-1 rounded-md border border-border/60 flex items-center gap-1.5">
+                      {form.customer.email ? (
+                        <span className="text-blue-600 dark:text-blue-400 font-medium inline-flex items-center gap-1.5">
+                          ✉ <span className="font-mono">{form.customer.email}</span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400 text-[11px]">
+                          ✉ No email on file
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">GST Number</label>
-                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm font-mono" value={form.customer.gstNumber || ""} onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, gstNumber: e.target.value } }))} placeholder="27AABCN..." />
+                  <input className="w-full border border-border bg-background text-foreground rounded-lg px-3 py-2 text-xs sm:text-sm font-mono uppercase" value={form.customer.gstNumber || ""} onChange={e => setForm(f => ({ ...f, customer: { ...f.customer, gstNumber: e.target.value.toUpperCase() } }))} placeholder="27AABCN..." />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">Address</label>
@@ -883,9 +968,10 @@ function QuotationsContent() {
         actions={
           <button
             onClick={openCreate}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-9 px-4 rounded-xl text-xs sm:text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer"
           >
-            + New Quotation
+            <Plus className="size-4" />
+            <span>New Quotation</span>
           </button>
         }
       />

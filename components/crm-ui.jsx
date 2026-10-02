@@ -69,19 +69,19 @@ function PageHeader({
   breadcrumb
 }) {
   return (
-    <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-2.5 sm:gap-3">
+    <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
       <div className="min-w-0 flex-1">
         {breadcrumb ? (
-          <div className="mb-1 flex items-center gap-1 text-[11px] sm:text-xs font-medium uppercase tracking-wider text-muted-foreground truncate">
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
             {breadcrumb.split("/").map((b, i) => (
-              <span key={b} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="size-3" />}
+              <span key={b} className="flex items-center gap-1.5">
+                {i > 0 && <ChevronRight className="size-3 opacity-60" />}
                 {b.trim()}
               </span>
             ))}
           </div>
         ) : null}
-        <h1 className="text-xl font-bold uppercase tracking-wide text-foreground sm:text-3xl leading-tight break-words">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold uppercase tracking-tight text-foreground leading-tight break-words">
           {title}
         </h1>
         {subtitle ? (
@@ -92,7 +92,7 @@ function PageHeader({
       </div>
 
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-start sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto justify-start sm:justify-end self-start sm:self-center">
           {actions}
         </div>
       ) : null}

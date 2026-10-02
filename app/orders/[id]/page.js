@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getSalesOrder, getCompany, createDNFromSO, createInvoiceFromSO, fmtINR, fmtDate } from "@/services/documentService";
 import { DocumentPrintView } from "@/components/DocumentPrintView";
 import { PageHeader, StatusBadge } from "@/components/crm-ui";
+import { ConvertNotificationModal } from "@/components/ConvertNotificationModal";
 import Link from "next/link";
 
 function InfoCard({ label, children }) {
@@ -23,6 +24,7 @@ export default function SalesOrderDetailPage() {
   const [printing, setPrinting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [convertModal, setConvertModal] = useState(null);
 
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
   
@@ -40,21 +42,26 @@ export default function SalesOrderDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleCreateDN = async () => {
-    try {
-      const dn = await createDNFromSO(id, {});
-      showToast(`DN ${dn.dnNo} created`);
-      router.push(`/deliveries/${dn.dnNo}`);
-    } catch (e) {
-      showToast(e.message, "error");
-    }
+  const handleCreateDN = () => {
+    setConvertModal({ targetType: "Delivery Note" });
   };
 
-  const handleCreateInvoice = async () => {
+  const handleCreateInvoice = () => {
+    setConvertModal({ targetType: "Sales Invoice" });
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!doc) return;
     try {
-      const inv = await createInvoiceFromSO(id, {});
-      showToast(`Invoice ${inv.invoiceNo} created`);
-      router.push(`/invoices/${inv.invoiceNo}`);
+      if (convertModal.targetType === "Delivery Note") {
+        const dn = await createDNFromSO(id);
+        showToast(`Delivery Note ${dn.dnNo} created successfully ✓`);
+        router.push(`/deliveries/${dn.dnNo}`);
+      } else {
+        const inv = await createInvoiceFromSO(id);
+        showToast(`Invoice ${inv.invoiceNo} created successfully ✓`);
+        router.push(`/invoices/${inv.invoiceNo}`);
+      }
     } catch (e) {
       showToast(e.message, "error");
     }
@@ -137,6 +144,21 @@ export default function SalesOrderDetailPage() {
             <DocumentPrintView doc={doc} type="Sales Order" company={company} embedded={true} />
           </div>
         </div>
+      )}
+
+      {convertModal && (
+        <ConvertNotificationModal
+          isOpen={Boolean(convertModal)}
+          onClose={() => setConvertModal(null)}
+          title={`Convert to ${convertModal.targetType}?`}
+          sourceDocNo={doc.soNo}
+          customerName={doc.customer?.name}
+          targetType={convertModal.targetType}
+          amount={doc.grandTotal}
+          advanceReceived={doc.advanceReceived}
+          balanceAmount={doc.balanceAmount}
+          onConfirm={handleConfirmConvert}
+        />
       )}
     </>
   );

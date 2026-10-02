@@ -216,14 +216,7 @@ export default function LeadsPage() {
     setSelectedLead(lead);
     setEmailType(defaultType);
 
-    if (defaultType === "quotation") {
-      setTargetStage("Quotation Sent");
-      setEmailForm({
-        to: recipientEmail,
-        subject: `Quotation details for ${lead.customerName}`,
-        message: `Hi ${lead.customerName},\n\nWe have reviewed your requirements and our team has prepared the quotation for you.\n\nPlease feel free to reach out if you have any questions regarding the pricing or technical scope.\n\nBest regards,\nSales Team`,
-      });
-    } else if (defaultType === "meeting") {
+    if (defaultType === "meeting") {
       setTargetStage("Potential");
       setEmailForm({
         to: recipientEmail,
@@ -250,13 +243,6 @@ export default function LeadsPage() {
         ...f,
         subject: `Following up: ${selectedLead.customerName} - Inquiry`,
         message: `Hi ${selectedLead.customerName},\n\nJust following up on your inquiry. Please let us know if you need any additional specifications, pricing, or product demonstrations.\n\nLooking forward to hearing from you.\n\nBest regards,\nSales Team`,
-      }));
-    } else if (type === "quotation") {
-      setTargetStage("Quotation Sent");
-      setEmailForm((f) => ({
-        ...f,
-        subject: `Quotation details for ${selectedLead.customerName}`,
-        message: `Hi ${selectedLead.customerName},\n\nWe have reviewed your requirements and our team has prepared the quotation for you.\n\nPlease feel free to reach out if you have any questions regarding the pricing or technical scope.\n\nBest regards,\nSales Team`,
       }));
     } else if (type === "meeting") {
       setTargetStage("Potential");
@@ -942,7 +928,7 @@ export default function LeadsPage() {
                 <label className="text-xs font-semibold text-muted-foreground block mb-1.5">
                   Select Email Type & Destination Section:
                 </label>
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => applyTemplate("followup")}
@@ -954,19 +940,6 @@ export default function LeadsPage() {
                   >
                     <span>Follow-up</span>
                     <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Contacted</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => applyTemplate("quotation")}
-                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-semibold transition-all ${
-                      emailType === "quotation"
-                        ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary"
-                        : "border-border bg-card hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span>Quotation</span>
-                    <span className="text-[10px] font-normal opacity-80 mt-0.5">→ Quotation Sent</span>
                   </button>
 
                   <button
@@ -999,33 +972,6 @@ export default function LeadsPage() {
                   ))}
                 </select>
               </div>
-
-              {emailType === "quotation" && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                  <div>
-                    <p className="font-bold flex items-center gap-1.5 text-blue-800 dark:text-blue-300">
-                      <FileText className="size-4 text-blue-600 dark:text-blue-400" />
-                      Generate formal itemized Quotation
-                    </p>
-                    <p className="text-[11px] text-blue-700 dark:text-blue-300/80 mt-0.5 leading-relaxed">
-                      Build an official quotation with SKU items, pricing, GST calculation, and attached PDF.
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    type="button"
-                    className="shrink-0 h-8.5 gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
-                    onClick={() => {
-                      const targetLead = selectedLead;
-                      setSelectedLead(null);
-                      handleQuotationAction(targetLead);
-                    }}
-                  >
-                    <FileText className="size-3.5" />
-                    {leadQuotationMap[selectedLead?.id] ? "View Existing Quotation" : "Create Quotation Now"}
-                  </Button>
-                </div>
-              )}
 
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Recipient (To)</label>
@@ -1060,16 +1006,6 @@ export default function LeadsPage() {
                       onClick={() => applyTemplate("followup")}
                     >
                       Follow-up
-                    </button>
-                    <span className="text-muted-foreground">·</span>
-                    <button
-                      type="button"
-                      className={`font-semibold hover:underline ${
-                        emailType === "quotation" ? "text-primary underline" : "text-muted-foreground"
-                      }`}
-                      onClick={() => applyTemplate("quotation")}
-                    >
-                      Quotation
                     </button>
                     <span className="text-muted-foreground">·</span>
                     <button

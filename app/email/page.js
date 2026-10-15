@@ -1,4 +1,5 @@
 "use client";
+import { authFetch } from "@/lib/authUtils";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -24,7 +25,7 @@ export default function EmailPage() {
 
   // Load saved emails from MongoDB
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails`)
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -53,7 +54,7 @@ export default function EmailPage() {
 
     // Fetch all existing leads and collect their sourceEmailIds
     // so we can hide "Create Lead" for emails that already have a lead
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`)
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`)
       .then(res => res.json())
       .then(leads => {
         if (Array.isArray(leads)) {
@@ -69,7 +70,7 @@ export default function EmailPage() {
     setLoading(true);
     toast.info("Syncing Gmail emails...");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/sync-gmail`);
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/sync-gmail`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -130,7 +131,7 @@ export default function EmailPage() {
     setEmails(prev => prev.map(e => e.id === id ? { ...e, read: true } : e));
     
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${id}/read`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${id}/read`, {
         method: 'PUT'
       });
       if (res.ok) {
@@ -148,7 +149,7 @@ export default function EmailPage() {
     setExtractingId(email.id);
     toast.info("Extracting structured lead...");
     try {
-      const extractRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/extract-lead-from-text`, {
+      const extractRes = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/extract-lead-from-text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email })
@@ -176,7 +177,7 @@ export default function EmailPage() {
         sourceEmailId: email.id, // used for deduplication
       };
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -186,7 +187,7 @@ export default function EmailPage() {
         toast.success("Lead created! Redirecting to leads page...");
         setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
         setLeadEmailIds(prev => new Set([...prev, email.id])); // hide button immediately
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
+        authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
         setTimeout(() => router.push('/leads'), 800);
       } else if (res.status === 409) {
         // Duplicate — lead already exists
@@ -196,7 +197,7 @@ export default function EmailPage() {
         });
         setLeadEmailIds(prev => new Set([...prev, email.id])); // hide button immediately
         setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
+        authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
         setTimeout(() => router.push('/leads'), 1200);
       } else {
         const errorData = await res.json();
@@ -217,7 +218,7 @@ export default function EmailPage() {
 
     try {
       // 1. Send the actual follow-up email via backend
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${emailObj.id}/follow-up`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${emailObj.id}/follow-up`, {
         method: 'POST'
       });
 
@@ -230,7 +231,7 @@ export default function EmailPage() {
       toast.success("Follow-up email sent successfully");
 
       // 2. Move/create the lead into "Contacted" stage
-      const leadRes = await fetch(
+      const leadRes = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads/by-email/${emailObj.id}`,
         {
           method: 'PATCH',
@@ -263,7 +264,7 @@ export default function EmailPage() {
 
   const handleLinkToQuotation = (email) => {
     // 1. Mark as read on backend (non-blocking)
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
+    authFetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/emails/${email.id}/read`, { method: 'PUT' }).catch(() => {});
 
     // 2. Build URL parameters to forward to /quotations
     const params = new URLSearchParams();

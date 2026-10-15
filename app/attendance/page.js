@@ -427,7 +427,7 @@ export default function Page() {
               <UserCheck className="size-4.5 sm:size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">Today's Shift</div>
+              <div className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">Today&apos;s Shift</div>
               <div className="text-base sm:text-lg font-bold text-foreground mt-0.5 truncate">
                 {stats.presentToday === 1 ? "Present / Active" : "Not Punched"}
               </div>

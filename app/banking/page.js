@@ -200,11 +200,11 @@ export default function Page() {
 
       <div className="mt-4">
         {hdfcConfigured ? (
-          <NotBuiltNotice>HDFC API is configured — use "Sync from HDFC" to pull the latest statement.</NotBuiltNotice>
+          <NotBuiltNotice>HDFC API is configured — use &quot;Sync from HDFC&quot; to pull the latest statement.</NotBuiltNotice>
         ) : (
           <NotBuiltNotice>
-            HDFC API is not connected yet (no HDFC_API_BASE_URL / credentials in the backend .env). "Sync from HDFC" will tell you
-            that clearly rather than fail silently. Until then, use "+ Add Transaction" to enter statement rows manually — matching,
+            HDFC API is not connected yet (no HDFC_API_BASE_URL / credentials in the backend .env). &quot;Sync from HDFC&quot; will tell you
+            that clearly rather than fail silently. Until then, use &quot;+ Add Transaction&quot; to enter statement rows manually — matching,
             review and reconciliation all work the same either way.
           </NotBuiltNotice>
         )}
@@ -262,10 +262,10 @@ export default function Page() {
       <div className="mt-4">
         <Section title="Controls on banking operations">
           <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <li>Matching is by customer-name similarity plus an exact-amount bonus against each open invoice's outstanding balance — never auto-finalised.</li>
+            <li>Matching is by customer-name similarity plus an exact-amount bonus against each open invoice&apos;s outstanding balance — never auto-finalised.</li>
             <li>Reconciling a transaction records it as a real payment on the matched invoice, updating its balance and status immediately.</li>
-            <li>Sender name mismatch (e.g. "SHAKTI ENGG" vs registered name) is tolerated by the matcher — it scores word overlap, not exact string equality.</li>
-            <li>Every match, dismissal and reconciliation is a real database write, auditable via the invoice's payment history.</li>
+            <li>Sender name mismatch (e.g. &quot;SHAKTI ENGG&quot; vs registered name) is tolerated by the matcher — it scores word overlap, not exact string equality.</li>
+            <li>Every match, dismissal and reconciliation is a real database write, auditable via the invoice&apos;s payment history.</li>
           </ul>
         </Section>
       </div>

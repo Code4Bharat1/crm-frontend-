@@ -1,4 +1,5 @@
 "use client";
+import { authFetch } from "@/lib/authUtils";
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
@@ -245,7 +246,7 @@ function QuotationsContent() {
     try {
       const payload = { ...form, ...calcTotals(form.items, form.isInterState) };
       if (editingId) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5245/api'}/quotations/${editingId}`, {
+        await authFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5245/api'}/quotations/${editingId}`, {
           method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
         });
         showToast("Quotation updated");

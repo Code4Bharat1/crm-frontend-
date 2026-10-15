@@ -1,4 +1,5 @@
 "use client";
+import { authFetch } from "@/lib/authUtils";
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
@@ -8,12 +9,31 @@ import {
   Smartphone, Wifi, Unlink
 } from "lucide-react";
 import { toast } from "sonner";
-import axios from "axios";
 
 import { PageHeader, Section, StatusBadge } from "@/components/crm-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fmtDateTime } from "@/lib/crm-data";
+
+// Same shape as the axios calls this page was written for ({ data } on success, err.response.data
+// on failure), but sends the login token. axios was never installed.
+const call = async (method, url, { params, body } = {}) => {
+  const res = await authFetch(url + (params ? `?${new URLSearchParams(params)}` : ""), {
+    method,
+    ...(body !== undefined && { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(data?.message || data?.error || `Request failed (${res.status})`);
+    err.response = { status: res.status, data };
+    throw err;
+  }
+  return { data };
+};
+const http = {
+  get: (url, opts) => call("GET", url, opts),
+  post: (url, body) => call("POST", url, { body }),
+};
 
 const TEMPLATES = [
   "Quotation shared — kindly review",
@@ -54,7 +74,7 @@ export default function WhatsAppPage() {
   // Fetch all conversations
   const fetchConversations = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/conversations`);
+      const res = await http.get(`${API_BASE}/conversations`);
       if (res.data.success) {
         setThreads(res.data.data);
         if (res.data.data.length > 0 && !active) {
@@ -72,7 +92,7 @@ export default function WhatsAppPage() {
   const fetchMessages = useCallback(async (phone) => {
     if (!phone) return;
     try {
-      const res = await axios.get(`${API_BASE}/messages/${phone}`);
+      const res = await http.get(`${API_BASE}/messages/${phone}`);
       if (res.data.success) {
         setChatMsgs(res.data.data);
       }
@@ -84,7 +104,7 @@ export default function WhatsAppPage() {
   // Fetch WhatsApp Web Client status
   const fetchWebStatus = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_BASE}/web-client/status`);
+      const res = await http.get(`${API_BASE}/web-client/status`);
       if (res.data?.success) {
         setWebStatus(res.data.data);
       }
@@ -96,7 +116,7 @@ export default function WhatsAppPage() {
   const handleStartWebClient = async () => {
     setWebLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/web-client/start`);
+      const res = await http.post(`${API_BASE}/web-client/start`);
       if (res.data?.success) {
         setWebStatus(res.data.data);
         toast.success("WhatsApp Web initializing. Generating QR code...");
@@ -111,7 +131,7 @@ export default function WhatsAppPage() {
   const handleDisconnectWebClient = async () => {
     setWebLoading(true);
     try {
-      await axios.post(`${API_BASE}/web-client/disconnect`);
+      await http.post(`${API_BASE}/web-client/disconnect`);
       toast.info("WhatsApp Web client disconnected.");
       fetchWebStatus();
     } catch (err) {
@@ -125,8 +145,8 @@ export default function WhatsAppPage() {
   const fetchQrAndConfig = useCallback(async (greetingText) => {
     try {
       const [qrRes, cfgRes] = await Promise.all([
-        axios.get(`${API_BASE}/qr`, { params: { message: greetingText || customGreeting } }).catch(() => null),
-        axios.get(`${API_BASE}/config`).catch(() => null)
+        http.get(`${API_BASE}/qr`, { params: { message: greetingText || customGreeting } }).catch(() => null),
+        http.get(`${API_BASE}/config`).catch(() => null)
       ]);
       if (qrRes?.data?.success) setQrData(qrRes.data.data);
       if (cfgRes?.data?.success) setConfigData(cfgRes.data.data);
@@ -173,7 +193,7 @@ export default function WhatsAppPage() {
     setMessageText("");
 
     try {
-      await axios.post(`${API_BASE}/send-message`, {
+      await http.post(`${API_BASE}/send-message`, {
         phone_number: active,
         message_body: textToSend
       });
@@ -201,7 +221,7 @@ export default function WhatsAppPage() {
     const validTemplateName = TEMPLATE_MAP[templateName] || "default_template";
 
     try {
-      await axios.post(`${API_BASE}/send-message`, {
+      await http.post(`${API_BASE}/send-message`, {
         phone_number: active,
         template_name: validTemplateName,
         template_language: "en"
@@ -219,7 +239,7 @@ export default function WhatsAppPage() {
   const handleSimulateScanMessage = async () => {
     setSimulating(true);
     try {
-      const res = await axios.post(`${API_BASE}/simulate-incoming`, {
+      const res = await http.post(`${API_BASE}/simulate-incoming`, {
         phone_number: active || "919850011223",
         sender_name: activeCust?.name && activeCust.name !== activeCust.id ? activeCust.name : "Sunil Jagtap (Bharat Forge)",
         message: "Hello! I scanned your WhatsApp QR code to get a quote for Omron Photoelectric Sensors and VFD automation panels."
@@ -249,7 +269,7 @@ export default function WhatsAppPage() {
         value: 150000,
         notes: `Inquiry via WhatsApp (${activeCust.id}): "${lastText}"`,
       };
-      await axios.post(`${BACKEND_ROOT}/sales/leads`, payload);
+      await http.post(`${BACKEND_ROOT}/sales/leads`, payload);
       toast.success("Lead created from WhatsApp conversation!", {
         description: `Source: WhatsApp | Contact: ${activeCust.name}`
       });

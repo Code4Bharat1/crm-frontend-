@@ -1,4 +1,5 @@
 "use client";
+import { authFetch } from "@/lib/authUtils";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
@@ -169,7 +170,7 @@ export default function LeadsPage() {
       if (!isSilent) toast.info("Checking Gmail for replies...");
 
       try {
-        const res = await fetch(
+        const res = await authFetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/sync-gmail`
         );
         const data = await res.json();
@@ -262,7 +263,7 @@ export default function LeadsPage() {
 
     setSendingEmail(true);
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/ai/send-email`,
         {
           method: "POST",
@@ -300,7 +301,7 @@ export default function LeadsPage() {
 
   const handleUpdateStage = async (leadId, newStage, customerName = "Lead") => {
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5245/api"}/sales/leads/${leadId}/stage`,
         {
           method: "PATCH",

@@ -823,7 +823,7 @@ function AppShell({ children }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 pb-24 sm:p-6 sm:pb-24">{children}</main>
       </div>
 
       {/* Floating Yellow Quick Action Button on Bottom Right */}

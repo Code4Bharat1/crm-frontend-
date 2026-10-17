@@ -42,6 +42,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, LEAD_STAGES } from "@/lib/crm-data";
 
+// Lead stage only moves forward: offer the current stage and everything after it.
+const stagesFrom = (stage) => LEAD_STAGES.slice(Math.max(0, LEAD_STAGES.indexOf(stage)));
+const atLeast = (stage, min) => (LEAD_STAGES.indexOf(stage) > LEAD_STAGES.indexOf(min) ? stage : min);
+
 export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState([]);
@@ -218,14 +222,14 @@ export default function LeadsPage() {
     setEmailType(defaultType);
 
     if (defaultType === "meeting") {
-      setTargetStage("Potential");
+      setTargetStage(atLeast(lead.stage, "Potential"));
       setEmailForm({
         to: recipientEmail,
         subject: `Meeting Request: Discussion with ${lead.customerName}`,
         message: `Hi ${lead.customerName},\n\nWe would love to schedule a brief 15-minute call to understand your timeline and project specifications better.\n\nWould tomorrow morning or afternoon work for you?\n\nBest regards,\nSales Team`,
       });
     } else {
-      setTargetStage("Contacted");
+      setTargetStage(atLeast(lead.stage, "Contacted"));
       setEmailForm({
         to: recipientEmail,
         subject: `Regarding Inquiry - ${lead.customerName}`,
@@ -239,14 +243,14 @@ export default function LeadsPage() {
     setEmailType(type);
 
     if (type === "followup") {
-      setTargetStage("Contacted");
+      setTargetStage(atLeast(selectedLead.stage, "Contacted"));
       setEmailForm((f) => ({
         ...f,
         subject: `Following up: ${selectedLead.customerName} - Inquiry`,
         message: `Hi ${selectedLead.customerName},\n\nJust following up on your inquiry. Please let us know if you need any additional specifications, pricing, or product demonstrations.\n\nLooking forward to hearing from you.\n\nBest regards,\nSales Team`,
       }));
     } else if (type === "meeting") {
-      setTargetStage("Potential");
+      setTargetStage(atLeast(selectedLead.stage, "Potential"));
       setEmailForm((f) => ({
         ...f,
         subject: `Meeting Request: Discussion with ${selectedLead.customerName}`,
@@ -661,7 +665,7 @@ export default function LeadsPage() {
                                   }
                                   className="w-full h-8 rounded-lg border border-border bg-background px-2 text-[11px] font-semibold text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer truncate"
                                 >
-                                  {LEAD_STAGES.map((s) => (
+                                  {stagesFrom(l.stage).map((s) => (
                                     <option key={s} value={s}>
                                       {s}
                                     </option>
@@ -830,7 +834,7 @@ export default function LeadsPage() {
                                       className="h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                                       title="Move directly to another section"
                                     >
-                                      {LEAD_STAGES.map((s) => (
+                                      {stagesFrom(l.stage).map((s) => (
                                         <option key={s} value={s}>
                                           {s}
                                         </option>
@@ -966,7 +970,7 @@ export default function LeadsPage() {
                   onChange={(e) => setTargetStage(e.target.value)}
                   className="rounded border border-border bg-background px-2 py-1 text-xs font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
-                  {LEAD_STAGES.map((s) => (
+                  {stagesFrom(selectedLead?.stage).map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>

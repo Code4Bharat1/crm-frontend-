@@ -4,8 +4,8 @@ import { authFetch } from "@/lib/authUtils";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import {
-  Paperclip, Mic, Send, UserPlus, QrCode, ExternalLink,
-  Copy, Check, Sparkles, RefreshCw, X, ShieldCheck, ArrowRight, MessageSquare,
+  Paperclip, Mic, Send, UserPlus,
+  Copy, Check, RefreshCw, X, ShieldCheck, ArrowRight, MessageSquare,
   Smartphone, Wifi, Unlink
 } from "lucide-react";
 import { toast } from "sonner";
@@ -63,11 +63,7 @@ export default function WhatsAppPage() {
 
   // QR Modal & Meta Integration State
   const [showQrModal, setShowQrModal] = useState(false);
-  const [qrData, setQrData] = useState(null);
   const [configData, setConfigData] = useState(null);
-  const [customGreeting, setCustomGreeting] = useState("Hello Nexcore Alliance, I would like to inquire about your automation products and solutions.");
-  const [copied, setCopied] = useState(false);
-  const [simulating, setSimulating] = useState(false);
   const [activeModalTab, setActiveModalTab] = useState("wweb"); // 'wweb' | 'qr' | 'meta'
 
 
@@ -141,23 +137,19 @@ export default function WhatsAppPage() {
     }
   };
 
-  // Fetch QR Code data & Meta config
-  const fetchQrAndConfig = useCallback(async (greetingText) => {
+  // Fetch Meta Cloud API config (shown in the Meta tab of the linking modal)
+  const fetchConfig = useCallback(async () => {
     try {
-      const [qrRes, cfgRes] = await Promise.all([
-        http.get(`${API_BASE}/qr`, { params: { message: greetingText || customGreeting } }).catch(() => null),
-        http.get(`${API_BASE}/config`).catch(() => null)
-      ]);
-      if (qrRes?.data?.success) setQrData(qrRes.data.data);
+      const cfgRes = await http.get(`${API_BASE}/config`).catch(() => null);
       if (cfgRes?.data?.success) setConfigData(cfgRes.data.data);
     } catch (err) {
-      console.error("Failed to load QR / config:", err);
+      console.error("Failed to load config:", err);
     }
-  }, [customGreeting]);
+  }, []);
 
   useEffect(() => {
     fetchConversations();
-    fetchQrAndConfig();
+    fetchConfig();
     fetchWebStatus();
 
     // Poll every 4 seconds for fresh incoming messages and web client status
@@ -167,7 +159,7 @@ export default function WhatsAppPage() {
       if (active) fetchMessages(active);
     }, 4000);
     return () => clearInterval(interval);
-  }, [fetchConversations, active, fetchMessages, fetchQrAndConfig, fetchWebStatus]);
+  }, [fetchConversations, active, fetchMessages, fetchConfig, fetchWebStatus]);
 
 
   useEffect(() => {
@@ -235,27 +227,6 @@ export default function WhatsAppPage() {
     }
   };
 
-  // Simulate incoming message as if a customer scanned QR & sent a WhatsApp message
-  const handleSimulateScanMessage = async () => {
-    setSimulating(true);
-    try {
-      const res = await http.post(`${API_BASE}/simulate-incoming`, {
-        phone_number: active || "919850011223",
-        sender_name: activeCust?.name && activeCust.name !== activeCust.id ? activeCust.name : "Sunil Jagtap (Bharat Forge)",
-        message: "Hello! I scanned your WhatsApp QR code to get a quote for Omron Photoelectric Sensors and VFD automation panels."
-      });
-      if (res.data.success) {
-        toast.success("Simulated Customer Message received via Meta Webhook!");
-        await fetchConversations();
-        if (active) await fetchMessages(active);
-      }
-    } catch (err) {
-      toast.error("Simulation failed: " + (err.response?.data?.error || err.message));
-    } finally {
-      setSimulating(false);
-    }
-  };
-
   // Create lead from conversation directly into MongoDB
   const handleCreateLeadFromChat = async () => {
     if (!activeCust) return;
@@ -280,9 +251,7 @@ export default function WhatsAppPage() {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success("Link copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
+    toast.success("Copied to clipboard!");
   };
 
   const activeCust = threads.find((t) => t.id === active) || {
@@ -296,7 +265,7 @@ export default function WhatsAppPage() {
       <PageHeader
         breadcrumb="CRM / WhatsApp"
         title="WhatsApp Inbox"
-        subtitle="Customer Scan QR ➔ Meta Cloud API ➔ Webhook ➔ Real-time CRM Ingestion & Chat."
+        subtitle="Linked phone & Meta Cloud API ➔ Webhook ➔ Real-time CRM Ingestion & Chat."
         actions={
           <div className="flex items-center gap-2">
             {/* WhatsApp Web Live Status Badge */}
@@ -329,30 +298,6 @@ export default function WhatsAppPage() {
               <span>{webStatus.isConnected ? "WhatsApp Linked" : "Link Phone (Web.js)"}</span>
             </Button>
 
-            {/* Customer Scan wa.me link */}
-            <Button
-              onClick={() => {
-                fetchQrAndConfig();
-                setActiveModalTab("qr");
-                setShowQrModal(true);
-              }}
-              variant="outline"
-              className="gap-2 font-semibold shadow-xs cursor-pointer"
-            >
-              <QrCode className="size-4 text-emerald-600" />
-              <span>Customer QR</span>
-            </Button>
-
-            <Button
-              onClick={handleSimulateScanMessage}
-              disabled={simulating}
-              variant="outline"
-              className="gap-1.5 text-xs font-semibold border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 cursor-pointer"
-              title="Simulates an incoming WhatsApp message triggered by a customer QR scan"
-            >
-              <Sparkles className={`size-3.5 text-amber-600 ${simulating ? "animate-spin" : ""}`} />
-              <span className="hidden md:inline">Simulate Scan</span>
-            </Button>
           </div>
         }
 
@@ -559,14 +504,6 @@ export default function WhatsAppPage() {
                 Link Phone (Web.js)
               </button>
               <button
-                onClick={() => setActiveModalTab("qr")}
-                className={`flex-1 py-1.5 font-semibold rounded-md transition-all cursor-pointer ${
-                  activeModalTab === "qr" ? "bg-white text-emerald-700 shadow-xs" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Customer QR (wa.me)
-              </button>
-              <button
                 onClick={() => setActiveModalTab("meta")}
                 className={`flex-1 py-1.5 font-semibold rounded-md transition-all cursor-pointer ${
                   activeModalTab === "meta" ? "bg-white text-emerald-700 shadow-xs" : "text-muted-foreground hover:text-foreground"
@@ -688,87 +625,6 @@ export default function WhatsAppPage() {
                     </Button>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Tab 2: QR Code & Chat Link (wa.me) */}
-            {activeModalTab === "qr" && (
-              <div className="mt-4 space-y-4">
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                  {/* QR Image */}
-                  <div className="flex flex-col items-center justify-center p-3 rounded-2xl border border-emerald-200 bg-white shadow-xs">
-                    {qrData?.qrCodeUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={qrData.qrCodeUrl}
-                        alt="WhatsApp QR Code"
-                        className="size-48 rounded-lg object-contain"
-                      />
-                    ) : (
-                      <div className="size-48 flex items-center justify-center text-xs text-muted-foreground">
-                        Generating QR Code...
-                      </div>
-                    )}
-                    <span className="text-[10px] font-mono text-muted-foreground mt-2 font-semibold">
-                      +{qrData?.phoneNumber || "WhatsApp Business"}
-                    </span>
-                  </div>
-
-
-                  {/* Actions & Instructions */}
-                  <div className="space-y-3 flex-1 text-xs">
-                    <div>
-                      <p className="font-bold text-foreground mb-1 text-sm">How to Connect:</p>
-                      <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                        <li>Open <strong className="text-foreground">WhatsApp</strong> on your mobile phone.</li>
-                        <li>Tap <strong className="text-foreground">Camera</strong> or scan this QR Code.</li>
-                        <li>Hit send to deliver message directly into the CRM!</li>
-                      </ol>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1">
-                      <Button
-                        onClick={() => qrData?.chatUrl && window.open(qrData.chatUrl, "_blank")}
-                        className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer"
-                      >
-                        <ExternalLink className="size-4" />
-                        <span>Open Chat in WhatsApp</span>
-                      </Button>
-
-                      <Button
-                        onClick={() => qrData?.chatUrl && copyToClipboard(qrData.chatUrl)}
-                        variant="outline"
-                        className="w-full gap-2 cursor-pointer"
-                      >
-                        {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
-                        <span>{copied ? "Link Copied!" : "Copy wa.me Chat Link"}</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Greeting text input */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Pre-filled Customer Greeting Message
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={customGreeting}
-                      onChange={(e) => setCustomGreeting(e.target.value)}
-                      placeholder="Enter pre-filled inquiry text..."
-                      className="text-xs h-9"
-                    />
-                    <Button
-                      onClick={() => fetchQrAndConfig(customGreeting)}
-                      variant="outline"
-                      size="sm"
-                      className="h-9 px-3 text-xs"
-                    >
-                      Update QR
-                    </Button>
-                  </div>
-                </div>
               </div>
             )}
 
